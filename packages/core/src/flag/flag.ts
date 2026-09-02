@@ -63,6 +63,15 @@ export const Flag = {
   get OPENCODE_CONFIG_DIR() {
     return process.env["OPENCODE_CONFIG_DIR"]
   },
+  get OPENCODE_DATA_DIR() {
+    return process.env["OPENCODE_DATA_DIR"]
+  },
+  get OPENCODE_STATE_DIR() {
+    return process.env["OPENCODE_STATE_DIR"]
+  },
+  get OPENCODE_CACHE_DIR() {
+    return process.env["OPENCODE_CACHE_DIR"]
+  },
   get OPENCODE_PURE() {
     return truthy("OPENCODE_PURE")
   },
