@@ -85,7 +85,7 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
   let root: HTMLDivElement | undefined
   let optionsRef: HTMLDivElement | undefined
   let customRef: HTMLButtonElement | undefined
-  let optsRef: HTMLButtonElement[] = []
+  const optsRef: HTMLButtonElement[] = []
   let replied = false
   let focusFrame: number | undefined
 

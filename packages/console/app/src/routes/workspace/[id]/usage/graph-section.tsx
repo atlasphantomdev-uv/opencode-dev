@@ -195,7 +195,7 @@ export function GraphSection() {
     model: null as string | null,
     modelDropdownOpen: false,
     keyDropdownOpen: false,
-    colorScheme: "light" as "light" | "dark",
+    colorScheme: "light",
   })
   const onPreviousMonth = async () => {
     const month = store.month === 0 ? 11 : store.month - 1

@@ -46,7 +46,7 @@ export function orderSelectedFields<TColumn extends Column>(
     }
     if (is(field, Table)) return orderSelectedFields(getTableColumnsRuntime(field as SQLiteTable), path)
     return orderSelectedFields(field as Record<string, unknown>, path)
-  }) as SelectedFieldsOrdered
+  })
 }
 
 export function mapUpdateSet<TTable extends SQLiteTable>(table: TTable, values: SQLiteUpdateSetSource<TTable>) {
@@ -78,9 +78,7 @@ export function mapResultRow(
           : is(column.field, Subquery)
             ? (column.field._.sql as unknown as { decoder: { mapFromDriverValue(value: unknown): unknown } }).decoder
             : (column.field.sql as unknown as { decoder: { mapFromDriverValue(value: unknown): unknown } }).decoder
-    ) as {
-      mapFromDriverValue(value: unknown): unknown
-    }
+    )
     const rawValue = row[columnIndex]
     const value = rawValue === null ? null : decoder.mapFromDriverValue(rawValue)
     const objectName = column.path[0]
@@ -91,7 +89,7 @@ export function mapResultRow(
         node[pathChunk] = value
         return
       }
-      node[pathChunk] = (node[pathChunk] ?? {}) as Record<string, unknown>
+      node[pathChunk] = (node[pathChunk] ?? {})
       node = node[pathChunk] as Record<string, unknown>
     })
 

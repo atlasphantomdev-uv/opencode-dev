@@ -49,7 +49,7 @@ export function TerminalPanelV2(props: { stacked?: boolean } = {}) {
 
   const [store, setStore] = createStore({
     autoCreated: false,
-    recovered: {} as Record<string, boolean>,
+    recovered: {},
     view: typeof window === "undefined" ? 1000 : (window.visualViewport?.height ?? window.innerHeight),
   })
 

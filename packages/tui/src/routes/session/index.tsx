@@ -1500,7 +1500,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
               <Dynamic
                 last={index() === props.parts.length - 1}
                 component={component()}
-                part={part as any}
+                part={part}
                 message={props.message}
               />
             </Show>
@@ -2268,7 +2268,7 @@ function Task(props: ToolProps) {
   const content = createMemo(() => {
     const description = stringValue(props.input.description)
     if (!description) return ""
-    let content = [
+    const content = [
       formatSubagentTitle(
         Locale.titlecase(stringValue(props.input.subagent_type) ?? "General"),
         description,

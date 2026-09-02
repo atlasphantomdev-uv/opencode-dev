@@ -226,7 +226,7 @@ export class SQLiteEffectDeleteBase<
         type: "delete",
         tables: extractUsedTable(this.config.table),
       },
-    ) as SQLiteEffectDeletePrepare<this, TEffectHKT>
+    )
   }
 
   prepare(): SQLiteEffectDeletePrepare<this, TEffectHKT> {

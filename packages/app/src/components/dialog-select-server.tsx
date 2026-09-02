@@ -613,7 +613,7 @@ export function ServerConnectionList(props: { controller: ReturnType<typeof useS
                 showCredentials
               />
               <div class="flex items-center justify-center gap-4 pl-4">
-                <Show when={props.controller.current() && ServerConnection.key(props.controller.current()!) === key}>
+                <Show when={props.controller.current() && ServerConnection.key(props.controller.current()) === key}>
                   <Icon name="check" class="h-6" />
                 </Show>
 

@@ -128,14 +128,14 @@ export default {
               "User-Agent": "opencode",
               Accept: "application/vnd.github+json",
             },
-          }).then((x) => x.json())) as any
+          }).then((x) => x.json()))
           const user = (await fetch("https://api.github.com/user", {
             headers: {
               Authorization: `Bearer ${response.tokenset.access}`,
               "User-Agent": "opencode",
               Accept: "application/vnd.github+json",
             },
-          }).then((x) => x.json())) as any
+          }).then((x) => x.json()))
           subject = user.id.toString()
 
           const primaryEmail = emails.find((x: any) => x.primary)

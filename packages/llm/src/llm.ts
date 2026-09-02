@@ -169,7 +169,7 @@ export function generateObject(options: GenerateObjectOptions<ToolSchema<any>> |
       makeTool({
         description: GENERATE_OBJECT_TOOL_DESCRIPTION,
         parameters: schema,
-        success: Schema.Unknown as ToolSchema<unknown>,
+        success: Schema.Unknown,
         execute: () => Effect.void,
       }),
     )

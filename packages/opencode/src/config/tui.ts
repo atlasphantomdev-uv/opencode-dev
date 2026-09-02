@@ -102,7 +102,7 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
         ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty" }),
       )
       const data = ConfigParse.jsonc(expanded, configFilepath)
-      if (!isRecord(data)) return {} as Info
+      if (!isRecord(data)) return {}
       // Flatten a nested "tui" key so users who wrote `{ "tui": { ... } }` inside tui.json
       // (mirroring the old opencode.json shape) still get their settings applied.
       const normalized = dropUnknownKeybinds(normalize(data))
@@ -141,7 +141,7 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
           }).pipe(Effect.as(undefined)),
         ),
       )
-      if (!text) return {} as Info
+      if (!text) return {}
       yield* Effect.logInfo("loading tui config", { path: filepath })
       return yield* load(text, filepath)
     })

@@ -10,7 +10,7 @@ export function createHomeScrollController(groups: Accessor<HomeSessionGroup[]>)
   const [thumbTrack, setThumbTrack] = createSignal<HTMLDivElement>()
   const [hoverTarget, setHoverTarget] = createSignal<HTMLElement>()
   const [state, setState] = createStore({
-    titleOpacity: {} as Partial<Record<HomeSessionGroup["id"], number>>,
+    titleOpacity: {},
   })
   const headerRefs = new Map<HomeSessionGroup["id"], HTMLDivElement>()
   const headerOffsets = new Map<HomeSessionGroup["id"], number>()

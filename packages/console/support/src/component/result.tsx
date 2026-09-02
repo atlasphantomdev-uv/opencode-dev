@@ -114,6 +114,6 @@ function isLinkCell(value: unknown): value is { __link: string; label: string } 
     typeof value === "object" &&
     value !== null &&
     "__link" in value &&
-    typeof (value as { __link: unknown }).__link === "string"
+    typeof (value).__link === "string"
   )
 }

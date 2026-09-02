@@ -296,7 +296,7 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
     })
 
   let bootedAt = 0
-  let bootingRoot = false
+  const bootingRoot = false
   let eventFrame: number | undefined
   let eventTimer: ReturnType<typeof setTimeout> | undefined
 

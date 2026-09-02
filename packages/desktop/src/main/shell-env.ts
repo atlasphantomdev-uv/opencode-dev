@@ -40,7 +40,7 @@ function probe(shell: string, mode: "-il" | "-l"): Probe {
     windowsHide: true,
   })
 
-  const err = out.error as NodeJS.ErrnoException | undefined
+  const err = out.error
   if (err) {
     if (err.code === "ETIMEDOUT") return { type: "Timeout" }
     console.log(`[server] Shell env probe failed for ${shell} ${mode}: ${err.message}`)

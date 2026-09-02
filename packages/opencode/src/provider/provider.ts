@@ -1401,7 +1401,7 @@ const layer = Layer.effect(
         const catalog = mapValues(modelsDev, fromModelsDevProvider)
         const database = mapValues(catalog, toPublicInfo)
 
-        const providers: Record<ProviderV2.ID, Info> = {} as Record<ProviderV2.ID, Info>
+        const providers: Record<ProviderV2.ID, Info> = {}
         const languages = new Map<string, LanguageModelV3>()
         const modelLoaders: {
           [providerID: string]: CustomModelLoader
@@ -1613,7 +1613,7 @@ const layer = Layer.effect(
 
           const options = yield* Effect.promise(() =>
             plugin.auth!.loader!(
-              () => bridge.promise(auth.get(providerID).pipe(Effect.orDie)) as any,
+              () => bridge.promise(auth.get(providerID).pipe(Effect.orDie)),
               toPublicInfo(database[plugin.auth!.provider]),
             ),
           )

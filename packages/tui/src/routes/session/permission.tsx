@@ -113,7 +113,7 @@ export function PermissionPrompt(props: { request: PermissionRequest; directory?
   const project = useProject()
   const sync = useSync()
   const [store, setStore] = createStore({
-    stage: "permission" as PermissionStage,
+    stage: "permission",
   })
   const pathFormatter = usePathFormatter()
 

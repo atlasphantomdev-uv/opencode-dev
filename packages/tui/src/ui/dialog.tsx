@@ -72,7 +72,7 @@ function init() {
       element: JSX.Element
       onClose?: () => void
     }[],
-    size: "medium" as "medium" | "large" | "xlarge",
+    size: "medium",
   })
 
   const renderer = useRenderer()

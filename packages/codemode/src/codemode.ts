@@ -144,7 +144,7 @@ export const execute = <const Tools extends Record<string, unknown>>(
 
 /** Creates an Effect-native runtime over explicit, schema-described tools. */
 export const make = <const Tools extends Record<string, unknown> = {}>(
-  options: Options<Tools> = {} as Options<Tools>,
+  options: Options<Tools> = {},
 ): Runtime<Services<Tools>> => {
   const tools = (options.tools ?? {}) as HostTools<Services<Tools>>
   ToolRuntime.assertValidTools(tools)

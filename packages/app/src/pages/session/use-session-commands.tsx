@@ -280,7 +280,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     const path = file.pathFromTab(tab)
     if (!path) return
 
-    const range = file.selectedLines(path) as SelectedLineRange | null | undefined
+    const range = file.selectedLines(path)
     if (!range) {
       showToast({
         title: language.t("toast.context.noLineSelection.title"),

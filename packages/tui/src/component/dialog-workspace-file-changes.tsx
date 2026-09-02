@@ -34,7 +34,7 @@ export function DialogWorkspaceFileChanges(props: {
   const { theme } = useTheme()
   const tuiConfig = useTuiConfig()
   const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
-  const [store, setStore] = createStore({ active: "yes" as WorkspaceFileChangesChoice })
+  const [store, setStore] = createStore({ active: "yes" })
   const height = createMemo(() => Math.min(props.files.length, 8))
   const fileNameWidth = createMemo(() => 48 - Math.max(Math.max(7, ...props.files.map(changeCountWidth)) - 7, 0))
 

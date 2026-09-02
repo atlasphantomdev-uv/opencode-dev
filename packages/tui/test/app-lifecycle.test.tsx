@@ -90,7 +90,7 @@ test("app.exit prints the session epilogue after scoped cleanup", async () => {
   process.stdout.write = ((chunk: string | Uint8Array) => {
     stdout += String(chunk)
     return true
-  }) as typeof process.stdout.write
+  })
 
   try {
     const { run } = await import("../src/app")

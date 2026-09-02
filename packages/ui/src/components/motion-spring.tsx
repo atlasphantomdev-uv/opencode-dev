@@ -19,7 +19,7 @@ export function useSpring(target: () => number, options?: Opt | (() => Opt), sna
   let config = read()
   let snapValue = snapKey?.()
   let stop = attachSpring(spring, source, config)
-  let off = spring.on("change", (next: number) => setValue(next))
+  const off = spring.on("change", (next: number) => setValue(next))
 
   createComputed(() => {
     const next = target()

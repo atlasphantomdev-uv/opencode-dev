@@ -314,7 +314,7 @@ export class SQLiteEffectInsertBase<
         type: "insert",
         tables: extractUsedTable(this.config.table),
       },
-    ) as SQLiteEffectInsertPrepare<this, TEffectHKT>
+    )
   }
 
   prepare(): SQLiteEffectInsertPrepare<this, TEffectHKT> {

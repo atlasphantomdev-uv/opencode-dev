@@ -170,8 +170,8 @@ const aggregateSessionStats = Effect.fn("Cli.stats.aggregate")(function* (
 
         const sessionCost = session.cost ?? 0
         const sessionTokens = session.tokens ?? { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }
-        let sessionToolUsage: Record<string, number> = {}
-        let sessionModelUsage: Record<
+        const sessionToolUsage: Record<string, number> = {}
+        const sessionModelUsage: Record<
           string,
           {
             messages: number

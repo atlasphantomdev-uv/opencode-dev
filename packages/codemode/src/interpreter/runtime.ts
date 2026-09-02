@@ -391,7 +391,7 @@ const invokeStringMethod = (value: string, name: string, args: Array<unknown>, n
         break
       }
       if (args[0] instanceof SandboxRegExp) {
-        result = value.split((args[0] as SandboxRegExp).regex, optNum(1))
+        result = value.split((args[0]).regex, optNum(1))
         break
       }
       const requestedLimit = optNum(1)
@@ -419,7 +419,7 @@ const invokeStringMethod = (value: string, name: string, args: Array<unknown>, n
     case "replace":
     case "replaceAll": {
       if (args[0] instanceof SandboxRegExp) {
-        const pattern = (args[0] as SandboxRegExp).regex
+        const pattern = (args[0]).regex
         const replacement = str(1)
         if (name === "replaceAll" && !pattern.global) {
           throw new InterpreterRuntimeError(
@@ -525,8 +525,8 @@ const invokeArrayStatic = (name: string, args: Array<unknown>, node: AstNode): u
       }
       // Map/Set materialize directly (the data checkpoint would serialize them to {}).
       if (args[0] instanceof SandboxMap)
-        return Array.from((args[0] as SandboxMap).map.entries(), ([key, item]) => [key, item])
-      if (args[0] instanceof SandboxSet) return Array.from((args[0] as SandboxSet).set.values())
+        return Array.from((args[0]).map.entries(), ([key, item]) => [key, item])
+      if (args[0] instanceof SandboxSet) return Array.from((args[0]).set.values())
       if (args[0] instanceof SandboxURLSearchParams) {
         return Array.from(args[0].params.entries(), ([key, value]) => [key, value])
       }
@@ -1733,7 +1733,7 @@ class Interpreter<R> {
           throw new InterpreterRuntimeError("The 'in' operator requires a data object on the right-hand side.", node)
         }
         // Own properties only, so arrays don't leak the host Array.prototype (map/constructor/...).
-        return Object.hasOwn(rhs as object, coerceOperand(lhs) as PropertyKey)
+        return Object.hasOwn(rhs, coerceOperand(lhs) as PropertyKey)
       default:
         throw new InterpreterRuntimeError(`Unsupported binary operator '${operator}'.`, node)
     }
@@ -1921,7 +1921,7 @@ class Interpreter<R> {
       if (callable instanceof GlobalMethodReference) {
         if (callable.namespace === "console") return self.invokeConsole(callable.name, args, node)
         if (callable.namespace === "Object" && args[0] instanceof ToolReference) {
-          return self.invokeObjectMethodOnTools(callable.name, args[0] as ToolReference, node)
+          return self.invokeObjectMethodOnTools(callable.name, args[0], node)
         }
         return boundedData(invokeGlobalMethod(callable, args, node), `${callable.namespace}.${callable.name} result`)
       }
@@ -2148,7 +2148,7 @@ class Interpreter<R> {
       case "allSettled": {
         const observations = items.map((item) =>
           item instanceof SandboxPromise
-            ? Effect.map(this.observePromise(item), (exit) => ({ promise: item as SandboxPromise | undefined, exit }))
+            ? Effect.map(this.observePromise(item), (exit) => ({ promise: item, exit }))
             : Effect.succeed({ promise: undefined as SandboxPromise | undefined, exit: Exit.succeed(item as unknown) }),
         )
         return Effect.gen(function* () {
@@ -3237,7 +3237,7 @@ class Interpreter<R> {
         throw new InterpreterRuntimeError(`URL.${property} received an invalid value.`, node).as("TypeError")
       }
     }
-    const target = reference.target as SafeObject
+    const target = reference.target
     const objectKey = key as string
     this.rejectCircularInsertion(target, next, "Object assignment result", node)
     target[objectKey] = next
@@ -3347,7 +3347,7 @@ export const executeWithLimits = <const Tools extends Record<string, unknown>>(
     ...(options.onToolCallEnd === undefined ? {} : { onToolCallEnd: options.onToolCallEnd }),
   }
   const tools = ToolRuntime.make(
-    (options.tools ?? {}) as HostTools<Services<Tools>>,
+    (options.tools ?? {}),
     limits.maxToolCalls,
     searchIndex,
     hooks,

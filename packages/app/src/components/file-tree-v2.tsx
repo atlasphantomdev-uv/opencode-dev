@@ -139,7 +139,7 @@ export default function FileTreeV2(props: {
   const expanded = (path: string) => file.tree.state(path)?.expanded ?? !live()
   const rows = createMemo(() => {
     if (live()) return flattenLiveFileTreeV2((path) => file.tree.children(path), expanded)
-    return flattenFileTreeV2(model()!, expanded)
+    return flattenFileTreeV2(model(), expanded)
   })
   const [root, setRoot] = createSignal<HTMLDivElement>()
   const [focused, setFocused] = createSignal<string>()
@@ -235,7 +235,7 @@ export default function FileTreeV2(props: {
                   transform: `translateY(${item().start}px)`,
                 }}
               >
-                <Show when={rowByKey().get(key as string)}>
+                <Show when={rowByKey().get(key)}>
                   {(row) => (
                     <Show
                       when={row().node.type === "directory"}

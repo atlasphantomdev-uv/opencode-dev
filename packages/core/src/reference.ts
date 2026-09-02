@@ -51,9 +51,9 @@ const layer = Layer.effect(
     const state = State.create<Data, Draft>({
       initial: () => ({ sources: new Map() }),
       draft: (draft) => ({
-        add: (name, source) => draft.sources.set(name, source as Types.DeepMutable<Source>),
+        add: (name, source) => draft.sources.set(name, source),
         remove: (name) => draft.sources.delete(name),
-        list: () => Array.from(draft.sources.entries()) as [string, Source][],
+        list: () => Array.from(draft.sources.entries()),
       }),
       finalize: (draft) =>
         Effect.gen(function* () {

@@ -935,7 +935,7 @@ function TextViewer<T>(props: TextFileProps<T>) {
   useAnnotationRerender<LineAnnotation<T>>({
     viewer,
     current: () => instance,
-    annotations: () => (local.annotations as LineAnnotation<T>[] | undefined) ?? [],
+    annotations: () => (local.annotations) ?? [],
   })
 
   // -- cleanup --
@@ -1195,7 +1195,7 @@ function DiffViewer<T>(props: DiffFileProps<T>) {
   useAnnotationRerender<DiffLineAnnotation<T>>({
     viewer,
     current: () => instance,
-    annotations: () => (local.annotations as DiffLineAnnotation<T>[] | undefined) ?? [],
+    annotations: () => (local.annotations) ?? [],
   })
 
   // -- cleanup --

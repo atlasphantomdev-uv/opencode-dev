@@ -105,7 +105,7 @@ export const createSseClient = <TData = unknown>({
       const headers =
         options.headers instanceof Headers
           ? options.headers
-          : new Headers(options.headers as Record<string, string> | undefined)
+          : new Headers(options.headers)
 
       if (lastEventId !== undefined) {
         headers.set("Last-Event-ID", lastEventId)

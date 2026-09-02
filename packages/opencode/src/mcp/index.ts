@@ -326,14 +326,14 @@ const layer = Layer.effect(
             return Effect.void
           }),
         )
-        if (result) return { client: result.client, status: { status: "connected" } as Status }
+        if (result) return { client: result.client, status: { status: "connected" } }
         // If this was an auth error, stop trying other transports
         if (lastStatus?.status === "needs_auth" || lastStatus?.status === "needs_client_registration") break
       }
 
       return {
         client: undefined as MCPClient | undefined,
-        status: (lastStatus ?? { status: "failed", error: "Unknown error" }) as Status,
+        status: (lastStatus ?? { status: "failed", error: "Unknown error" }),
       }
     })
 
@@ -377,8 +377,8 @@ const layer = Layer.effect(
 
         const { client: mcpClient, status } =
           mcp.type === "remote"
-            ? yield* connectRemote(key, mcp as ConfigMCPV1.Info & { type: "remote" })
-            : yield* connectLocal(key, mcp as ConfigMCPV1.Info & { type: "local" })
+            ? yield* connectRemote(key, mcp)
+            : yield* connectLocal(key, mcp)
 
         if (!mcpClient) {
           if (status.status !== "connected" && status.status !== "disabled") {

@@ -29,7 +29,7 @@ export const load = (dir: string) =>
       return config.flat as Record<string, unknown>
     },
     catch: (cause) => cause,
-  }).pipe(Effect.orElseSucceed(() => ({}) as Record<string, unknown>))
+  }).pipe(Effect.orElseSucceed(() => ({})))
 
 export const registry = (dir: string) =>
   load(dir).pipe(

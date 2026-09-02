@@ -224,7 +224,7 @@ export function MemberSection() {
   const submission = useSubmission(inviteMember)
   const [store, setStore] = createStore({
     show: false,
-    selectedRole: "member" as (typeof UserRole)[number],
+    selectedRole: "member",
     limit: "",
   })
 

@@ -510,7 +510,7 @@ function mkUser(text: string, extra: Part[] = [], sessionID = SESSION_ID): { mes
       time: { created: Date.now() },
       agent: "code",
       model: { providerID: "anthropic", modelID: "claude-sonnet-4-20250514" },
-    } as UserMessage,
+    },
     parts: [
       { id: uid(), type: "text", text, time: { created: Date.now() } } as TextPart,
       // Clone extra parts with fresh ids so each user message owns unique part instances
@@ -533,7 +533,7 @@ function mkAssistant(parentID: string, sessionID = SESSION_ID): AssistantMessage
     path: { cwd: "/project", root: "/project" },
     cost: 0.003,
     tokens: { input: 1200, output: 800, reasoning: 200, cache: { read: 0, write: 0 } },
-  } as AssistantMessage
+  }
 }
 
 function textPart(text: string): TextPart {
@@ -1191,7 +1191,7 @@ function Playground() {
     if (!root) return
     const next: Record<string, string> = {}
     for (const ctrl of CSS_CONTROLS) {
-      const el = (root.querySelector(sample(ctrl)) ?? root.querySelector(ctrl.selector)) as HTMLElement | null
+      const el = (root.querySelector(sample(ctrl)) ?? root.querySelector(ctrl.selector))
       if (!el) continue
       const styles = getComputedStyle(el)
       const raw = ctrl.property.startsWith("--")
@@ -1631,7 +1631,7 @@ function Playground() {
   return (
     <div style={{ display: "flex", height: "calc(100vh - 48px)", gap: "0", overflow: "hidden", margin: "-24px" }}>
       {/* Inject dynamic style element */}
-      <style ref={styleEl!} />
+      <style ref={styleEl} />
 
       {/* Left sidebar: controls */}
       <div
@@ -1677,7 +1677,7 @@ function Playground() {
                   Import session
                 </button>
                 <input
-                  ref={pick!}
+                  ref={pick}
                   type="file"
                   accept=".json,application/json"
                   onChange={importFile}
@@ -2010,7 +2010,7 @@ function Playground() {
 
       {/* Main area: timeline preview */}
       <div
-        ref={previewRef!}
+        ref={previewRef}
         style={{ flex: "1", overflow: "auto", "min-width": "0", "background-color": "var(--v2-background-bg-base)" }}
       >
         <DataProvider data={data()} directory="/project">

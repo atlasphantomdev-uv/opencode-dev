@@ -54,7 +54,7 @@ function ToastV2Region(props: ToastV2RegionProps) {
         duration={5000}
         swipeDirections={["bottom"]}
         className={["toast-v2-region", local.className, local.class].filter(Boolean).join(" ")}
-        style={{ "--width": "320px", ...local.style } as JSX.CSSProperties}
+        style={{ "--width": "320px", ...local.style }}
         toastOptions={{
           ...local.toastOptions,
           unstyled: true,

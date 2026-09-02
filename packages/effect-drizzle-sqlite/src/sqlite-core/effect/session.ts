@@ -97,7 +97,7 @@ export class SQLiteEffectPreparedQuery<
     return this.executeWithCache<T["values"], T["all"]>(
       placeholderValues,
       "values",
-      (rows) => this.mapAllResult(rows) as T["all"],
+      (rows) => this.mapAllResult(rows),
     )
   }
 
@@ -112,7 +112,7 @@ export class SQLiteEffectPreparedQuery<
     return this.executeWithCache<T["values"], T["get"]>(
       placeholderValues,
       "values",
-      (rows) => this.mapGetResult(rows) as T["get"],
+      (rows) => this.mapGetResult(rows),
     )
   }
 
@@ -149,7 +149,7 @@ export class SQLiteEffectPreparedQuery<
     }
 
     if (this.customResultMapper) {
-      return (this.customResultMapper as (rows: unknown[][]) => unknown)(rows as unknown[][]) as T["all"]
+      return (this.customResultMapper as (rows: unknown[][]) => unknown)(rows as unknown[][])
     }
 
     return this.useJitMappers
@@ -181,7 +181,7 @@ export class SQLiteEffectPreparedQuery<
     }
 
     if (this.customResultMapper) {
-      return (this.customResultMapper as (rows: unknown[][]) => unknown)([row as unknown[]]) as T["get"]
+      return (this.customResultMapper as (rows: unknown[][]) => unknown)([row as unknown[]])
     }
 
     return this.useJitMappers
@@ -195,13 +195,13 @@ export class SQLiteEffectPreparedQuery<
     return this.executeWithCache<unknown[], T["all"]>(
       placeholderValues,
       "all",
-      (rows) => this.mapAllResult(rows) as T["all"],
+      (rows) => this.mapAllResult(rows),
     )
   }
 
   private getRqbV2(placeholderValues?: Record<string, unknown>) {
     return this.executeWithCache<unknown, T["get"] | undefined>(placeholderValues, "get", (row) =>
-      row === undefined ? undefined : (this.mapGetResult(row) as T["get"]),
+      row === undefined ? undefined : (this.mapGetResult(row)),
     )
   }
 

@@ -57,7 +57,7 @@ export function client<T extends Definition>(target: {
       }
       handlers.add(handler)
       return () => {
-        handlers!.delete(handler)
+        handlers.delete(handler)
       }
     },
   }

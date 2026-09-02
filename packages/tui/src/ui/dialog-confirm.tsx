@@ -20,7 +20,7 @@ export function DialogConfirm(props: DialogConfirmProps) {
   const dialog = useDialog()
   const { theme } = useTheme()
   const [store, setStore] = createStore({
-    active: "confirm" as "confirm" | "cancel",
+    active: "confirm",
   })
 
   useBindings(() => ({

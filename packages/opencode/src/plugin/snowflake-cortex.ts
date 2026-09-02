@@ -284,7 +284,7 @@ export async function SnowflakeCortexAuthPlugin(_input: PluginInput): Promise<Ho
     auth: {
       provider: "snowflake-cortex",
       async loader(getAuth, _provider) {
-        let auth = await getAuth()
+        const auth = await getAuth()
         if (auth.type !== "oauth") return {}
 
         let refreshPromise:
@@ -320,7 +320,7 @@ export async function SnowflakeCortexAuthPlugin(_input: PluginInput): Promise<Ho
         return {
           apiKey: OAUTH_DUMMY_KEY,
           async fetch(requestInput: RequestInfo | URL, init?: RequestInit) {
-            let currentAuth = await getAuth()
+            const currentAuth = await getAuth()
             if (currentAuth.type !== "oauth") return fetch(requestInput, init)
             let currentOauth = currentAuth as typeof currentAuth & {
               refresh: string

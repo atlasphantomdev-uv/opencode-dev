@@ -131,7 +131,7 @@ export const recordingLayer = (
               const captured = yield* captureResponseBody(response, response.headers["content-type"])
               const responseSnapshot: ResponseSnapshot = {
                 status: response.status,
-                headers: response.headers as Record<string, string>,
+                headers: response.headers,
                 ...captured,
               }
               const interaction: HttpInteraction = {

@@ -43,16 +43,16 @@ export function adaptServerEvent(event: OpenCodeEvent): ServerEvent {
             : undefined,
       },
       current: event,
-    } as ServerEvent
+    }
   }
   if (event.type === "permission.v2.replied")
-    return { id: event.id, type: "permission.replied", properties: event.data, current: event } as ServerEvent
+    return { id: event.id, type: "permission.replied", properties: event.data, current: event }
   if (event.type === "question.v2.asked")
-    return { id: event.id, type: "question.asked", properties: event.data, current: event } as ServerEvent
+    return { id: event.id, type: "question.asked", properties: event.data, current: event }
   if (event.type === "question.v2.replied")
-    return { id: event.id, type: "question.replied", properties: event.data, current: event } as ServerEvent
+    return { id: event.id, type: "question.replied", properties: event.data, current: event }
   if (event.type === "question.v2.rejected")
-    return { id: event.id, type: "question.rejected", properties: event.data, current: event } as ServerEvent
+    return { id: event.id, type: "question.rejected", properties: event.data, current: event }
   return { id: event.id, type: event.type, properties: event.data, current: event } as ServerEvent
 }
 

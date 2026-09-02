@@ -172,8 +172,8 @@ export const SessionReview = (props: SessionReviewProps) => {
   const nodes = new Map<string, HTMLDivElement>()
   const [store, setStore] = createStore({
     open: [] as string[],
-    visible: {} as Record<string, boolean>,
-    force: {} as Record<string, boolean>,
+    visible: {},
+    force: {},
     selection: null as SessionReviewSelection | null,
     commenting: null as SessionReviewSelection | null,
     opened: null as SessionReviewFocus | null,

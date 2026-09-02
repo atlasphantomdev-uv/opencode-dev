@@ -19,7 +19,7 @@ export default function BlackLayout(props: RouteSectionProps) {
       ? new Intl.NumberFormat(language.tag(language.locale()), {
           notation: "compact",
           compactDisplay: "short",
-        }).format(githubData()!.stars!)
+        }).format(githubData()!.stars)
       : config.github.starsFormatted.compact,
   )
 
@@ -58,7 +58,7 @@ export default function BlackLayout(props: RouteSectionProps) {
     return {
       "--hero-black-glow-intensity": values.glowIntensity.toFixed(3),
       "--hero-black-stroke-brightness": `${values.strokeBrightness.toFixed(0)}%`,
-    } as Record<string, string>
+    }
   })
 
   const handleAnimationFrame = (state: SpotlightAnimationState) => {

@@ -376,7 +376,7 @@ export const layerWith = (options?: LayerOptions) =>
               }),
             )
           if (definition?.durable) {
-            const committed = yield* commitDurableEvent(definition, event as Payload, undefined, commit)
+            const committed = yield* commitDurableEvent(definition, event, undefined, commit)
             if (committed) {
               event = {
                 ...event,
@@ -386,11 +386,11 @@ export const layerWith = (options?: LayerOptions) =>
                   version: definition.durable.version,
                 },
               }
-              yield* notify(event as Payload, true)
+              yield* notify(event, true)
               return event
             }
           }
-          yield* notify(event as Payload, false)
+          yield* notify(event, false)
           return event
         })
       }
@@ -432,7 +432,7 @@ export const layerWith = (options?: LayerOptions) =>
               type: definition.type,
               ...(location ? { location } : {}),
               data,
-            } as Payload<D>,
+            },
             options?.commit,
           )
         })

@@ -70,7 +70,7 @@ export function AnimatedNumber(props: { value: number; class?: string }) {
 
   const [state, setState] = createStore({
     value: target(),
-    direction: 1 as 1 | -1,
+    direction: 1,
   })
   const value = () => state.value
   const direction = () => state.direction

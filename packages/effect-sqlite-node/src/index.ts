@@ -74,7 +74,7 @@ export const make = (
           const statement = db.prepare(sql)
           statement.setReadBigInts(Context.get(fiber.context, Client.SafeIntegers))
           try {
-            return Effect.succeed(statement.all(...(params as SQLInputValue[])) as Array<Record<string, unknown>>)
+            return Effect.succeed(statement.all(...(params as SQLInputValue[])))
           } catch (cause) {
             return Effect.fail(
               new SqlError({
@@ -153,7 +153,7 @@ export const make = (
         transformRows,
       })) as SqliteClient,
       {
-        [TypeId]: TypeId as TypeId,
+        [TypeId]: TypeId,
         config: options,
         loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path)),
       },

@@ -228,8 +228,8 @@ export const locationLayer = Layer.effect(
     const state = State.create<Data, Draft>({
       initial: () => ({ integrations: new Map<ID, Entry>() }),
       draft: (draft) => ({
-        list: () => Array.from(draft.integrations.values(), (entry) => entry.ref) as Ref[],
-        get: (id) => draft.integrations.get(id)?.ref as Ref | undefined,
+        list: () => Array.from(draft.integrations.values(), (entry) => entry.ref),
+        get: (id) => draft.integrations.get(id)?.ref,
         update: (id, update) => {
           const current = draft.integrations.get(id) ?? {
             ref: { id, name: id },

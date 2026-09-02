@@ -22,7 +22,7 @@ export function fromSchema(schema: Schema.Top): JSONSchema7 {
 }
 
 export function fromTool(tool: Tool.Def): JSONSchema7 {
-  return tool.jsonSchema ?? fromSchema(tool.parameters as Schema.Top)
+  return tool.jsonSchema ?? fromSchema(tool.parameters)
 }
 
 function normalize(value: unknown, options: { stripNull?: boolean } = {}): unknown {

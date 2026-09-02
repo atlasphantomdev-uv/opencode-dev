@@ -435,7 +435,7 @@ function ProviderConnection(props: {
     methodIndex: undefined as undefined | number,
     authorization: undefined as undefined | IntegrationOauthConnectOutput["data"],
     promptInputs: undefined as undefined | Record<string, string>,
-    state: "pending" as undefined | "pending" | "complete" | "error" | "prompt",
+    state: "pending",
     error: undefined as string | undefined,
   })
 
@@ -495,7 +495,7 @@ function ProviderConnection(props: {
     )
   }
 
-  const method = createMemo(() => (store.methodIndex !== undefined ? methods().at(store.methodIndex!) : undefined))
+  const method = createMemo(() => (store.methodIndex !== undefined ? methods().at(store.methodIndex) : undefined))
 
   const methodLabel = (value?: { type?: string; label?: string }) => {
     if (!value) return ""
@@ -571,7 +571,7 @@ function ProviderConnection(props: {
 
   function AuthPromptsView() {
     const [formStore, setFormStore] = createStore({
-      value: {} as Record<string, string>,
+      value: {},
       index: 0,
     })
 

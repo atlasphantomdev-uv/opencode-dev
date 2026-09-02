@@ -129,7 +129,7 @@ export class Subscription {
           ? "user_message_chunk"
           : "agent_message_chunk"
 
-    for (const chunk of partsToContentChunks([part as ReplayPart])) {
+    for (const chunk of partsToContentChunks([part])) {
       await this.input.connection.sessionUpdate({
         sessionId: message.info.sessionID,
         update: {

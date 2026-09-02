@@ -208,7 +208,7 @@ function serverLayer(opts: { port: number; hostname: string }) {
     const result = close(callback)
     if (serverRef.forceStop) server.closeAllConnections()
     return result
-  }) as typeof server.close
+  })
 
   return Layer.mergeAll(
     NodeHttpServer.layer(() => server, { port: opts.port, host: opts.hostname, gracefulShutdownTimeout: "1 second" }),

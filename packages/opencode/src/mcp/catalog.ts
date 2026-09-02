@@ -43,7 +43,7 @@ export function convertTool(mcpTool: MCPToolDef, client: Client, timeout?: numbe
   const inputSchema: JSONSchema7 = {
     ...(mcpTool.inputSchema as JSONSchema7),
     type: "object",
-    properties: (mcpTool.inputSchema.properties ?? {}) as JSONSchema7["properties"],
+    properties: (mcpTool.inputSchema.properties ?? {}),
     additionalProperties: false,
   }
 

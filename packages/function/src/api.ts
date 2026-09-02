@@ -203,18 +203,7 @@ export default new Hono<{ Bindings: Env }>()
     return c.json({ info, messages })
   })
   .post("/feishu", async (c) => {
-    const body = (await c.req.json()) as {
-      challenge?: string
-      event?: {
-        message?: {
-          message_id?: string
-          root_id?: string
-          parent_id?: string
-          chat_id?: string
-          content?: string
-        }
-      }
-    }
+    const body = (await c.req.json())
     console.log(JSON.stringify(body, null, 2))
     const challenge = body.challenge
     if (challenge) return c.json({ challenge })

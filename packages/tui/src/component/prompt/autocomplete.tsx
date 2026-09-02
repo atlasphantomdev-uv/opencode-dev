@@ -100,8 +100,8 @@ export function Autocomplete(props: {
   const [store, setStore] = createStore({
     index: 0,
     selected: 0,
-    visible: false as AutocompleteRef["visible"],
-    input: "keyboard" as "keyboard" | "mouse",
+    visible: false,
+    input: "keyboard",
   })
 
   const [positionTick, setPositionTick] = createSignal(0)

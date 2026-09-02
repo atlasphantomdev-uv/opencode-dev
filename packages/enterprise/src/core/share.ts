@@ -189,12 +189,12 @@ export namespace Share {
                 await Storage.write(["share_data", input.share.id, "session"], item.data)
                 break
               case "message": {
-                const data = item.data as Message
+                const data = item.data
                 await Storage.write(["share_data", input.share.id, "message", data.id], item.data)
                 break
               }
               case "part": {
-                const data = item.data as Part
+                const data = item.data
                 await Storage.write(["share_data", input.share.id, "part", data.messageID, data.id], item.data)
                 break
               }

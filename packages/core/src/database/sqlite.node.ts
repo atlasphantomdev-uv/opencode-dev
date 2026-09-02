@@ -58,7 +58,7 @@ const make = (options: Config) =>
         const statement = native.prepare(query)
         statement.setReadBigInts(Context.get(fiber.context, Client.SafeIntegers))
         try {
-          return Effect.succeed(statement.all(...(params as SQLInputValue[])) as Array<Record<string, unknown>>)
+          return Effect.succeed(statement.all(...(params as SQLInputValue[])))
         } catch (cause) {
           return Effect.fail(
             new SqlError({

@@ -183,7 +183,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     const [store, setStore] = createStore({
       themes: {
         "oc-2": oc2Theme,
-      } as Record<string, DesktopTheme>,
+      },
       themeId,
       colorScheme,
       mode,

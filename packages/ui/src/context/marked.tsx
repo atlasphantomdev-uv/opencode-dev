@@ -18,7 +18,7 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
         preferredHighlighter: "shiki-wasm",
       })
       const name = language in bundledLanguages ? language : "text"
-      if (!highlighter.getLoadedLanguages().includes(name)) await highlighter.loadLanguage(name as BundledLanguage)
+      if (!highlighter.getLoadedLanguages().includes(name)) await highlighter.loadLanguage(name)
       return highlighter.codeToHtml(code, {
         lang: name,
         theme: "OpenCode",

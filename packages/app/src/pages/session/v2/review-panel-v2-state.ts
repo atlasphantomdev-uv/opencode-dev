@@ -14,7 +14,7 @@ export function createReviewPanelV2State() {
     createStore({
       sidebarOpened: true,
       sidebarWidth: SESSION_REVIEW_V2_SIDEBAR_WIDTH_DEFAULT,
-      expandMode: "collapse" as SessionReviewExpandMode,
+      expandMode: "collapse",
     }),
   )
   // The filter is transient by design: a persisted filter would silently hide

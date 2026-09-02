@@ -255,8 +255,8 @@ function SessionFileViewV1(props: { tab: string }) {
   const selectedLines = createMemo<SelectedLineRange | null>(() => {
     const p = path()
     if (!p) return null
-    if (file.ready()) return (file.selectedLines(p) as SelectedLineRange | undefined) ?? null
-    return (getSessionHandoff(sessionKey())?.files[p] as SelectedLineRange | undefined) ?? null
+    if (file.ready()) return (file.selectedLines(p)) ?? null
+    return (getSessionHandoff(sessionKey())?.files[p]) ?? null
   })
   const scrollSync = createScrollSync({
     tab: () => props.tab,
@@ -493,7 +493,7 @@ function SessionFileViewV1(props: { tab: string }) {
 
   const content = () => (
     <div class="mt-3 relative h-full min-h-0">
-      <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll as any}>
+      <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll}>
         <Switch>
           <Match when={state()?.loaded}>{renderFile(contents())}</Match>
           <Match when={state()?.loading}>
@@ -540,8 +540,8 @@ function SessionFileViewV2(props: { tab: string }) {
   const selectedLines = createMemo<SelectedLineRange | null>(() => {
     const p = path()
     if (!p) return null
-    if (file.ready()) return (file.selectedLines(p) as SelectedLineRange | undefined) ?? null
-    return (getSessionHandoff(sessionKey())?.files[p] as SelectedLineRange | undefined) ?? null
+    if (file.ready()) return (file.selectedLines(p)) ?? null
+    return (getSessionHandoff(sessionKey())?.files[p]) ?? null
   })
   const scrollSync = createScrollSync({
     tab: () => props.tab,
@@ -784,7 +784,7 @@ function SessionFileViewV2(props: { tab: string }) {
 
   const content = () => (
     <div class="mt-3 relative h-full min-h-0">
-      <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll as any}>
+      <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll}>
         <Switch>
           <Match when={state()?.loaded}>{renderFile(contents())}</Match>
           <Match when={state()?.loading}>

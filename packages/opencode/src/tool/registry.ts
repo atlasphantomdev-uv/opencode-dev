@@ -377,7 +377,7 @@ function zodJsonSchema(schema: z.ZodType): JSONSchema7 {
   const { $defs, ...rest } = result
   return (
     $defs && isJsonSchemaObject($defs) ? { ...rest, definitions: $defs as JSONSchema7["definitions"] } : rest
-  ) as JSONSchema7
+  )
 }
 
 function zodMetadataRegistry(schema: z.ZodType) {

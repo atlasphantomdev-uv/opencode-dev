@@ -52,7 +52,7 @@ export const { use: useFrecency, provider: FrecencyProvider } = createSimpleCont
         writeText(frecencyPath, lines.map((entry) => JSON.stringify(entry)).join("\n") + "\n").catch(() => {})
     })
 
-    const [store, setStore] = createStore({ data: {} as Record<string, { frequency: number; lastOpen: number }> })
+    const [store, setStore] = createStore({ data: {} })
 
     function updateFrecency(filePath: string) {
       const absolutePath = path.resolve(paths.cwd, filePath)

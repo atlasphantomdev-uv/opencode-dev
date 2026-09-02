@@ -71,7 +71,7 @@ const AgentCreateCommand = effectCmd({
     yield* Effect.promise(async () => {
       const cliPath = args.path
       const cliDescription = args.description
-      const cliMode = args.mode as AgentMode | undefined
+      const cliMode = args.mode
       const perms = args.permissions
 
       const isFullyNonInteractive = cliPath && cliDescription && cliMode && perms !== undefined

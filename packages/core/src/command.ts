@@ -32,10 +32,10 @@ const layer = Layer.effect(
     const state = State.create<Data, Draft>({
       initial: () => ({ commands: new Map() }),
       draft: (draft) => ({
-        list: () => Array.from(draft.commands.values()) as Info[],
+        list: () => Array.from(draft.commands.values()),
         get: (name) => draft.commands.get(name),
         update: (name, update) => {
-          const current = draft.commands.get(name) ?? ({ name, template: "" } as Types.DeepMutable<Info>)
+          const current = draft.commands.get(name) ?? ({ name, template: "" })
           if (!draft.commands.has(name)) draft.commands.set(name, current)
           update(current)
           current.name = name

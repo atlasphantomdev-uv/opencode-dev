@@ -301,7 +301,7 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
     project: {
       ...input.current.project,
       async list() {
-        return ((await legacy().project.list()).data ?? []) as Project[]
+        return ((await legacy().project.list()).data ?? [])
       },
       async current(value?: Parameters<ServerApi["project"]["current"]>[0]) {
         const result = await legacy(value?.location).project.current()

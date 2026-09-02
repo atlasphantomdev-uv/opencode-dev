@@ -194,16 +194,16 @@ export function createServerSession(
   const sessionApi = messageApi ? (sessionApiOrOptions as SessionApi) : undefined
   const options = messageApi ? currentOptions : (sessionApiOrOptions as ServerSessionOptions | undefined)
   const [data, setData] = createStore({
-    info: {} as Record<string, Session | undefined>,
-    session_status: {} as Record<string, SessionStatus>,
-    session_diff: {} as Record<string, FileDiffInfo[]>,
-    todo: {} as Record<string, Todo[]>,
-    permission: {} as Record<string, PermissionRequest[]>,
-    question: {} as Record<string, QuestionRequest[]>,
-    message: {} as Record<string, Message[]>,
-    session_message: {} as Record<string, SessionMessageInfo[]>,
-    part: {} as Record<string, Part[]>,
-    part_text_accum_delta: {} as Record<string, string>,
+    info: {},
+    session_status: {},
+    session_diff: {},
+    todo: {},
+    permission: {},
+    question: {},
+    message: {},
+    session_message: {},
+    part: {},
+    part_text_accum_delta: {},
     session_working(id: string) {
       return (this.session_status[id]?.type ?? "idle") !== "idle"
     },
@@ -240,11 +240,11 @@ export function createServerSession(
     return created
   }
   const [meta, setMeta] = createStore({
-    limit: {} as Record<string, number | undefined>,
-    cursor: {} as Record<string, string | undefined>,
-    complete: {} as Record<string, boolean | undefined>,
-    loading: {} as Record<string, boolean | undefined>,
-    at: {} as Record<string, number | undefined>,
+    limit: {},
+    cursor: {},
+    complete: {},
+    loading: {},
+    at: {},
   })
 
   const indexLegacyMessage = (message: Message) => {

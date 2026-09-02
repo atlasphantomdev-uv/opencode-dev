@@ -267,9 +267,9 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
       },
       createStore({
         list: [] as StoredServer[],
-        projects: {} as Record<string, StoredProject[]>,
-        lastProject: {} as Record<string, string>,
-        recentlyClosed: {} as Record<string, string[]>,
+        projects: {},
+        lastProject: {},
+        recentlyClosed: {},
       }),
     )
 

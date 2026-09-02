@@ -44,10 +44,10 @@ export function handlers<const Root extends Spec.Any>(root: Root, handlers: Hand
 
   function add(node: Spec.Any, value: RuntimeHandlers) {
     if (typeof value === "function") {
-      result.push({ spec: node.spec, load: value as () => Promise<{ default: RuntimeHandler }> })
+      result.push({ spec: node.spec, load: value })
       return
     }
-    if (value.$) result.push({ spec: node.spec, load: value.$ as () => Promise<{ default: RuntimeHandler }> })
+    if (value.$) result.push({ spec: node.spec, load: value.$ })
     for (const [name, child] of Object.entries(node.commands)) add(child, value[name] as RuntimeHandlers)
   }
 

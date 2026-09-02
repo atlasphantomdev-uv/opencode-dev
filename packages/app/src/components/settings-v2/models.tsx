@@ -25,7 +25,7 @@ export const SettingsModelsV2: Component = () => {
   const serverSdk = useServerSDK()
   const [store, setStore] = persisted(
     Persist.serverGlobal(serverSdk().scope, "settings-v2.models.providers"),
-    createStore({ collapsed: {} as Record<string, boolean> }),
+    createStore({ collapsed: {} }),
   )
 
   const list = useFilteredList<ModelItem>({

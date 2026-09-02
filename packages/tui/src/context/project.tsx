@@ -31,7 +31,7 @@ export const { use: useProject, provider: ProjectProvider } = createSimpleContex
       workspace: {
         current: undefined as string | undefined,
         list: [] as Workspace[],
-        status: {} as Record<string, WorkspaceStatus>,
+        status: {},
       },
     })
 

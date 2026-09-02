@@ -5,7 +5,7 @@ import { InlineInput } from "@opencode-ai/ui/inline-input"
 export function createInlineEditorController() {
   // This controller intentionally supports one active inline editor at a time.
   const [editor, setEditor] = createStore({
-    active: "" as string,
+    active: "",
     value: "",
   })
 

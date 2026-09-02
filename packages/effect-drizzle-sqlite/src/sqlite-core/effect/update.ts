@@ -57,10 +57,10 @@ export type SQLiteEffectUpdateWithJoins<
         TFrom,
         T["_"]["returning"],
         TDynamic,
-        Exclude<T["_"]["excludedMethods"] | "from", "leftJoin" | "rightJoin" | "innerJoin" | "fullJoin">,
+        Exclude<T["_"]["excludedMethods"] | "from", "fullJoin" | "innerJoin" | "leftJoin" | "rightJoin">,
         T["_"]["effectHKT"]
       >,
-      Exclude<T["_"]["excludedMethods"] | "from", "leftJoin" | "rightJoin" | "innerJoin" | "fullJoin">
+      Exclude<T["_"]["excludedMethods"] | "from", "fullJoin" | "innerJoin" | "leftJoin" | "rightJoin">
     >
 
 export type SQLiteEffectUpdateReturningAll<
@@ -180,7 +180,7 @@ export class SQLiteEffectUpdateBuilder<
   ): SQLiteEffectUpdateWithout<
     SQLiteEffectUpdateBase<TTable, TRunResult, undefined, undefined, false, never, TEffectHKT>,
     false,
-    "leftJoin" | "rightJoin" | "innerJoin" | "fullJoin"
+    "fullJoin" | "innerJoin" | "leftJoin" | "rightJoin"
   > {
     return new SQLiteEffectUpdateBase(
       this.table,

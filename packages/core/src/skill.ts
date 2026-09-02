@@ -64,9 +64,9 @@ const layer = Layer.effect(
       draft: (draft) => ({
         source: (source) => {
           if (draft.sources.some((item) => Source.equals(item, source))) return
-          draft.sources.push(source as Types.DeepMutable<Source>)
+          draft.sources.push(source)
         },
-        list: () => draft.sources as Source[],
+        list: () => draft.sources,
       }),
     })
 

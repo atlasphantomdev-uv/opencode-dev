@@ -338,7 +338,7 @@ export const ProvidersLoginCommand = effectCmd({
         return
       }
       const [exit, token] = yield* cliTry("Failed to run auth provider command: ", () =>
-        Promise.all([proc.exited, text(proc.stdout!)]),
+        Promise.all([proc.exited, text(proc.stdout)]),
       ).pipe(Effect.ensuring(Effect.sync(() => abort.abort())))
       if (exit !== 0) {
         yield* Prompt.log.error("Failed")
@@ -430,7 +430,7 @@ export const ProvidersLoginCommand = effectCmd({
 
     const plugin = hooks.findLast((x) => x.auth?.provider === provider)
     if (plugin && plugin.auth) {
-      const handled = yield* handlePluginAuth({ auth: plugin.auth! }, provider, args.method)
+      const handled = yield* handlePluginAuth({ auth: plugin.auth }, provider, args.method)
       if (handled) return
     }
 
@@ -444,7 +444,7 @@ export const ProvidersLoginCommand = effectCmd({
 
       const customPlugin = hooks.findLast((x) => x.auth?.provider === provider)
       if (customPlugin && customPlugin.auth) {
-        const handled = yield* handlePluginAuth({ auth: customPlugin.auth! }, provider, args.method)
+        const handled = yield* handlePluginAuth({ auth: customPlugin.auth }, provider, args.method)
         if (handled) return
       }
 

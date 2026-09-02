@@ -114,7 +114,7 @@ export function SessionContextTab() {
   )
 
   const userMessages = createMemo(
-    () => messages().filter((m) => m.role === "user") as UserMessage[],
+    () => messages().filter((m) => m.role === "user"),
     emptyUserMessages,
     { equals: same },
   )

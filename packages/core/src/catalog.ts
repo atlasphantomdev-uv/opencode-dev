@@ -107,13 +107,13 @@ const layer = Layer.effect(
       draft: (draft) => {
         const result: Draft = {
           provider: {
-            list: () => Array.fromIterable(draft.providers.values()) as ProviderRecord[],
+            list: () => Array.fromIterable(draft.providers.values()),
             get: (providerID) => draft.providers.get(providerID),
             update: (providerID, fn) => {
               let current = draft.providers.get(providerID)
               if (!current) {
                 current = {
-                  provider: ProviderV2.Info.empty(providerID) as ProviderV2.MutableInfo,
+                  provider: ProviderV2.Info.empty(providerID),
                   models: new Map<ModelV2.ID, ModelV2.MutableInfo>(),
                 }
                 draft.providers.set(providerID, current)
@@ -131,7 +131,7 @@ const layer = Layer.effect(
               let record = draft.providers.get(providerID)
               if (!record) {
                 record = {
-                  provider: ProviderV2.Info.empty(providerID) as ProviderV2.MutableInfo,
+                  provider: ProviderV2.Info.empty(providerID),
                   models: new Map<ModelV2.ID, ModelV2.MutableInfo>(),
                 }
                 draft.providers.set(providerID, record)

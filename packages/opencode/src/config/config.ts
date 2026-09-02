@@ -40,7 +40,7 @@ import { withTransientReadRetry } from "@/util/effect-http-client"
 // Custom merge function that concatenates array fields instead of replacing them
 // Keep remeda's deep conditional merge type out of hot config-loading paths; TS profiling showed it dominates here.
 function mergeConfig(target: Info, source: Info): Info {
-  return mergeDeep(target, source) as Info
+  return mergeDeep(target, source)
 }
 
 function mergeConfigConcatArrays(target: Info, source: Info): Info {
@@ -253,7 +253,7 @@ const layer = Layer.effect(
     const loadFile = Effect.fnUntraced(function* (filepath: string, env?: Record<string, string>) {
       yield* Effect.logInfo("loading", { path: filepath })
       const text = yield* readConfigFile(filepath)
-      if (!text) return {} as Info
+      if (!text) return {}
       return yield* loadConfig(text, { path: filepath }, env)
     })
 

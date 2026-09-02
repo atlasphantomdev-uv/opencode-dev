@@ -132,11 +132,7 @@ export class SQLiteEffectRelationalQuery<TResult, TEffectHKT extends QueryEffect
       this.mode === "first" ? "get" : "all",
       makeDefaultRqbMapper(mapperConfig),
       mapperConfig,
-    ) as SQLiteEffectPreparedQuery<
-      PreparedQueryConfig & { all: TResult; get: TResult; execute: TResult },
-      TEffectHKT,
-      true
-    >
+    )
   }
 
   prepare(): SQLiteEffectPreparedQuery<

@@ -311,7 +311,7 @@ export function deriveNewContentsFromChunks(
 ): ApplyPatchFileUpdate {
   const originalContent = Bom.split(originalText)
 
-  let originalLines = originalContent.text.split("\n")
+  const originalLines = originalContent.text.split("\n")
 
   // Drop trailing empty element for consistent line counting
   if (originalLines.length > 0 && originalLines[originalLines.length - 1] === "") {
@@ -319,7 +319,7 @@ export function deriveNewContentsFromChunks(
   }
 
   const replacements = computeReplacements(originalLines, filePath, chunks)
-  let newLines = applyReplacements(originalLines, replacements)
+  const newLines = applyReplacements(originalLines, replacements)
 
   // Ensure trailing newline
   if (newLines.length === 0 || newLines[newLines.length - 1] !== "") {

@@ -89,11 +89,11 @@ export function http(
   return Effect.gen(function* () {
     const response = yield* client.execute(
       HttpClientRequest.make(request.method as never)(url, {
-        headers: ProxyUtil.headers(request.headers as HeadersInit, extra),
+        headers: ProxyUtil.headers(request.headers, extra),
         body: requestBody(request),
       }),
     )
-    const headers = new Headers(response.headers as HeadersInit)
+    const headers = new Headers(response.headers)
     headers.delete("content-encoding")
     headers.delete("content-length")
 

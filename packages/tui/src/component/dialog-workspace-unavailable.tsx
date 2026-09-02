@@ -9,7 +9,7 @@ export function DialogWorkspaceUnavailable(props: { onRestore?: () => boolean | 
   const dialog = useDialog()
   const { theme } = useTheme()
   const [store, setStore] = createStore({
-    active: "restore" as "cancel" | "restore",
+    active: "restore",
   })
 
   const options = ["cancel", "restore"] as const

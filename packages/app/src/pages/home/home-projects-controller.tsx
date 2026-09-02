@@ -25,7 +25,7 @@ export function createHomeProjectsController(home: HomeController) {
   const serverManagement = useServerManagementController({ navigateOnAdd: false })
   const [_state, setState, _, ready] = persisted(
     Persist.global("home.servers", ["home.servers.v1"]),
-    createStore({ collapsed: {} as Record<string, boolean> }),
+    createStore({ collapsed: {} }),
   )
   const [state] = createResource(
     () => ready.promise ?? Promise.resolve(),

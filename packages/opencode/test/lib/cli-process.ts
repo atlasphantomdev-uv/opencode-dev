@@ -381,7 +381,7 @@ export function withCliFixture<A, E>(
         kill: () => {
           proc.kill()
         },
-        exited: proc.exited as Promise<number>,
+        exited: proc.exited,
       } satisfies ServeHandle
     })
 
@@ -460,7 +460,7 @@ export function withCliFixture<A, E>(
         receive: Queue.take(responses),
         // proc.stdin.end() is idempotent in Bun; no try/catch needed.
         close: () => proc.stdin.end(),
-        exited: proc.exited as Promise<number>,
+        exited: proc.exited,
       } satisfies AcpHandle
     })
 
@@ -497,11 +497,11 @@ function normalizeLines(value: string) {
 function expectExit(result: RunResult, expected: number, label = "opencode") {
   if (result.exitCode === expected) return
   const tail = (s: string, n: number) => (s.length > n ? "..." + s.slice(-n) : s)
-  // eslint-disable-next-line no-console
+   
   console.error(`[${label}] expected exit ${expected}, got ${result.exitCode} after ${result.durationMs}ms`)
-  // eslint-disable-next-line no-console
+   
   console.error(`[${label}] stderr (last 2000):\n${tail(result.stderr, 2000)}`)
-  // eslint-disable-next-line no-console
+   
   console.error(`[${label}] stdout (last 500):\n${tail(result.stdout, 500)}`)
   throw new Error(`${label}: expected exit ${expected}, got ${result.exitCode}`)
 }

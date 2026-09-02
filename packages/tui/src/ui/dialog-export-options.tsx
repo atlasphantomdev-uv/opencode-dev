@@ -32,7 +32,7 @@ export function DialogExportOptions(props: DialogExportOptionsProps) {
     toolDetails: props.defaultToolDetails,
     assistantMetadata: props.defaultAssistantMetadata,
     openWithoutSaving: props.defaultOpenWithoutSaving,
-    active: "filename" as "filename" | "thinking" | "toolDetails" | "assistantMetadata" | "openWithoutSaving",
+    active: "filename",
   })
 
   useBindings(() => ({

@@ -94,7 +94,7 @@ export class SQLiteEffectDatabase<
           selection ??
             (("getSelectedFields" in qb
               ? ((qb as { getSelectedFields(): SelectedFields | undefined }).getSelectedFields() ?? {})
-              : {}) as SelectedFields),
+              : {})),
           alias,
           true,
         ),

@@ -258,7 +258,7 @@ function useWslAddServerController(props: DialogWslServerProps) {
   const wslServers = useWslServers()
   const api = platform.wslServers!
   const [store, setStore] = createStore({
-    view: "main" as "main" | "catalog",
+    view: "main",
     selectedDistro: null as string | null,
     catalogSearch: "",
     catalogTarget: null as string | null,

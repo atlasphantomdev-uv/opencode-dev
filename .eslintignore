@@ -1,0 +1,7 @@
+artifacts/
+dist/
+node_modules/
+.opencode/
+*.test.ts
+*.spec.ts
+e2e/

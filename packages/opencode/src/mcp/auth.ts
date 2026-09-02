@@ -64,8 +64,8 @@ const layer = Layer.effect(
 
     const read = Effect.fn("McpAuth.read")(function* () {
       return yield* fs.readJson(filepath).pipe(
-        Effect.map((data): AuthData => Option.getOrElse(decodeAuthData(data), () => ({}) as AuthData) as AuthData),
-        Effect.catch(() => Effect.succeed({} as AuthData)),
+        Effect.map((data): AuthData => Option.getOrElse(decodeAuthData(data), () => ({}))),
+        Effect.catch(() => Effect.succeed({})),
       )
     })
 

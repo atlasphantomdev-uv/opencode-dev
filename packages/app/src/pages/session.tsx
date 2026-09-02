@@ -2146,7 +2146,7 @@ export default function Page() {
                 ? {
                     items: followupDock(),
                     sending: sendingFollowup(),
-                    onSend: (id) => void sendFollowup(params.id!, id, { manual: true }),
+                    onSend: (id) => void sendFollowup(params.id, id, { manual: true }),
                     onEdit: editFollowup,
                   }
                 : undefined,

@@ -289,7 +289,7 @@ const layer = Layer.effect(
       if (!name) return output
       const s = yield* InstanceState.get(state)
       for (const hook of s.hooks) {
-        const fn = hook[name] as any
+        const fn = hook[name]
         if (!fn) continue
         yield* Effect.promise(async () => fn(input, output))
       }

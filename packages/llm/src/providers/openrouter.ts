@@ -46,7 +46,7 @@ export const protocol = Protocol.make({
             ({
               ...body,
               ...bodyOptions(request.providerOptions?.openrouter),
-            }) as OpenRouterBody,
+            }),
         ),
       ),
   },

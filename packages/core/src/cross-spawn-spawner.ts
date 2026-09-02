@@ -158,11 +158,11 @@ export const make = Effect.gen(function* () {
       pipe(output(sout.stream)),
       pipe(output(serr.stream)),
     ]
-    if (extra.length === 0) return arr as NodeChildProcess.StdioOptions
+    if (extra.length === 0) return arr
     const max = extra.reduce((acc, x) => Math.max(acc, x.fd), 2)
     for (let i = 3; i <= max; i++) arr[i] = "ignore"
     for (const x of extra) arr[x.fd] = pipe("pipe")
-    return arr as NodeChildProcess.StdioOptions
+    return arr
   }
 
   const setupFds = Effect.fnUntraced(function* (

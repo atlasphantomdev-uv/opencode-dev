@@ -84,7 +84,7 @@ export function PaymentSection() {
               </tr>
             </thead>
             <tbody>
-              <For each={payments()!}>
+              <For each={payments()}>
                 {(payment) => {
                   const date = new Date(payment.timeCreated)
                   const amount =
@@ -115,7 +115,7 @@ export function PaymentSection() {
                         {payment.paymentID ? (
                           <button
                             onClick={async () => {
-                              const receiptUrl = await downloadReceiptAction(params.id!, payment.paymentID!)
+                              const receiptUrl = await downloadReceiptAction(params.id!, payment.paymentID)
                               if (receiptUrl) {
                                 window.open(receiptUrl, "_blank")
                               }
