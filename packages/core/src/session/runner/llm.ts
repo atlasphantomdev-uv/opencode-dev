@@ -19,6 +19,7 @@ import { PermissionV2 } from "../../permission"
 import { ProviderV2 } from "../../provider"
 import { QuestionV2 } from "../../question"
 import { SystemContext } from "../../system-context/index"
+import { SessionStatusEvent } from "@opencode-ai/schema/session-status-event"
 import { SystemContextRegistry } from "../../system-context/registry"
 import { SkillGuidance } from "../../skill/guidance"
 import { ReferenceGuidance } from "../../reference/guidance"
@@ -31,6 +32,7 @@ import { SessionHistory } from "../history"
 import { SessionInput } from "../input"
 import { SessionSchema } from "../schema"
 import { SessionStore } from "../store"
+import { SystemPrompt } from "../system"
 import { type RunError, Service } from "./index"
 import { SessionRunnerModel } from "./model"
 import { createLLMEventPublisher } from "./publish-llm-event"
@@ -49,7 +51,7 @@ import { llmClient } from "../../effect/app-node-platform"
  * - Session ownership and controls
  *   - [x] Coordinate one local active drain per Session; explicit resumes join and prompt wakeups coalesce.
  *   - [ ] Replace local ownership with durable multi-node ownership when clustered.
- *   - [ ] Mark busy, retrying, idle, interrupted, or terminal-failure status durably.
+ *   - [x] Publish live busy/idle status events around each drain; durable status follows the deferred recovery slice.
  *   - [ ] Honor interruption and reject stale work after runtime attachment replacement.
  *   - [x] Honor optional agent step limits.
  *   - [ ] Bound provider retries and repeated identical tool calls.
@@ -105,6 +107,7 @@ const layer = Layer.effect(
     const referenceGuidance = yield* ReferenceGuidance.Service
     const config = yield* Config.Service
     const snapshots = yield* Snapshot.Service
+    const permission = yield* PermissionV2.Service
     const db = (yield* Database.Service).db
     const compaction = SessionCompaction.make({ events, llm, config: yield* config.entries() })
     const getSession = Effect.fn("SessionRunner.getSession")(function* (sessionID: SessionSchema.ID) {
@@ -212,8 +215,12 @@ const layer = Layer.effect(
           },
         },
         providerOptions: { openai: { promptCacheKey } },
-        system: [agent.info?.system, system.baseline]
-          .filter((part): part is string => part !== undefined && part.length > 0)
+        system: [
+          agent.info?.system ? agent.info.system : SystemPrompt.provider(model),
+          SystemPrompt.declaration(model),
+          system.baseline,
+        ]
+          .filter((part) => part.length > 0)
           .map(SystemPart.make),
         messages: [...toLLMMessages(context, model), ...(isLastStep ? [Message.assistant(MAX_STEPS_PROMPT)] : [])],
         tools: toolMaterialization?.definitions ?? [],
@@ -254,14 +261,40 @@ const layer = Layer.effect(
             }
             needsContinuation = true
             const assistantMessageID = yield* publisher.assistantMessageID(event.id)
+            // V1 doom-loop parity: read the streak synchronously after publication so a concurrent
+            // settle fiber cannot observe a later tool call's streak. Three consecutive identical
+            // calls within one assistant message require doom_loop approval before the third
+            // execution; declining dies with DeclinedError, which the settlement await below
+            // converts into a loop halt.
+            const repeated = publisher.repeatedToolCalls(event.name, event.input)
+            const doomLoopApproval = repeated
+              ? permission
+                  .assert({
+                    action: "doom_loop",
+                    resources: [event.name],
+                    save: ["*"],
+                    sessionID: session.id,
+                    agent: agent.id,
+                    metadata: { tool: event.name, input: event.input },
+                    source: { type: "tool", messageID: assistantMessageID, callID: event.id },
+                  })
+                  // V1 halts the turn on every doom_loop refusal shape: decline, reject-with-feedback
+                  // (CorrectedError), and configured deny (BlockedError). Die with DeclinedError so the
+                  // settlement await converts any of them into the same loop halt.
+                  .pipe(Effect.catch(() => Effect.die(new PermissionV2.DeclinedError())))
+              : Effect.void
             yield* Effect.uninterruptibleMask((restore) =>
               restore(
-                toolMaterialization.settle({
-                  sessionID: session.id,
-                  agent: agent.id,
-                  assistantMessageID,
-                  call: event,
-                }),
+                doomLoopApproval.pipe(
+                  Effect.andThen(() =>
+                    toolMaterialization.settle({
+                      sessionID: session.id,
+                      agent: agent.id,
+                      assistantMessageID,
+                      call: event,
+                    }),
+                  ),
+                ),
               ).pipe(
                 Effect.flatMap((settlement) =>
                   publish(
@@ -391,25 +424,43 @@ const layer = Layer.effect(
       readonly sessionID: SessionSchema.ID
       readonly force: boolean
     }) {
-      const hasSteer = yield* SessionInput.hasPending(db, input.sessionID, "steer")
-      const hasQueue = hasSteer ? false : yield* SessionInput.hasPending(db, input.sessionID, "queue")
-      if (!input.force && !hasSteer && !hasQueue) return
-      yield* failInterruptedTools(input.sessionID)
-      let promotion: SessionInput.Delivery | undefined = hasSteer ? "steer" : hasQueue ? "queue" : undefined
-      let shouldRun = input.force || hasSteer || hasQueue
-      while (shouldRun) {
-        let needsContinuation = true
-        let step = 1
-        while (needsContinuation) {
-          const result = yield* runTurn(input.sessionID, promotion, step)
-          needsContinuation = result.needsContinuation
-          step = result.step + 1
-          promotion = "steer"
-          if (!needsContinuation) needsContinuation = yield* SessionInput.hasPending(db, input.sessionID, "steer")
+      // V1-parity live status: busy while this drain runs, idle once it settles (success, failure, or interrupt).
+      // Live-only by spec: activity is not durable across process restarts.
+      yield* events.publish(SessionStatusEvent.Status, {
+        sessionID: input.sessionID,
+        status: { type: "busy" },
+      })
+      const drain = Effect.gen(function* () {
+        const hasSteer = yield* SessionInput.hasPending(db, input.sessionID, "steer")
+        const hasQueue = hasSteer ? false : yield* SessionInput.hasPending(db, input.sessionID, "queue")
+        if (!input.force && !hasSteer && !hasQueue) return
+        yield* failInterruptedTools(input.sessionID)
+        let promotion: SessionInput.Delivery | undefined = hasSteer ? "steer" : hasQueue ? "queue" : undefined
+        let shouldRun = input.force || hasSteer || hasQueue
+        while (shouldRun) {
+          let needsContinuation = true
+          let step = 1
+          while (needsContinuation) {
+            const result = yield* runTurn(input.sessionID, promotion, step)
+            needsContinuation = result.needsContinuation
+            step = result.step + 1
+            promotion = "steer"
+            if (!needsContinuation) needsContinuation = yield* SessionInput.hasPending(db, input.sessionID, "steer")
+          }
+          shouldRun = yield* SessionInput.hasPending(db, input.sessionID, "queue")
+          promotion = shouldRun ? "queue" : undefined
         }
-        shouldRun = yield* SessionInput.hasPending(db, input.sessionID, "queue")
-        promotion = shouldRun ? "queue" : undefined
-      }
+      })
+      return yield* drain.pipe(
+        Effect.ensuring(
+          events
+            .publish(SessionStatusEvent.Status, {
+              sessionID: input.sessionID,
+              status: { type: "idle" },
+            })
+            .pipe(Effect.andThen(events.publish(SessionStatusEvent.Idle, { sessionID: input.sessionID }))),
+        ),
+      )
     })
 
     return Service.of({
@@ -435,5 +486,6 @@ export const node = makeLocationNode({
     Config.node,
     Snapshot.node,
     Database.node,
+    PermissionV2.node,
   ],
 })
