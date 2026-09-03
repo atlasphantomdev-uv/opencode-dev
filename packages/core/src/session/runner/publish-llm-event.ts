@@ -30,6 +30,9 @@ const tokens = (usage: Usage | undefined) => {
 const record = (value: unknown): Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : { value }
 
+/** Match V1 doom-loop semantics: three consecutive identical tool calls within one assistant message. */
+const DOOM_LOOP_THRESHOLD = 3
+
 const message = (value: unknown) => {
   if (typeof value === "string") return value
   try {
@@ -64,6 +67,9 @@ export const createLLMEventPublisher = (events: EventV2.Interface, input: Input)
       providerMetadata?: ProviderMetadata
     }
   >()
+  // Mirror V1 doom-loop detection: identical tool calls must be consecutive parts of one assistant
+  // message. Any non-tool part (text, reasoning, step boundary) breaks the streak.
+  let toolStreak: { readonly name: string; readonly inputText: string; count: number } | undefined
   const timestamp = DateTime.now
   let assistantMessageID: SessionMessage.ID | undefined
   let assistantActive = false
@@ -242,8 +248,10 @@ export const createLLMEventPublisher = (events: EventV2.Interface, input: Input)
   ) {
     switch (event.type) {
       case "step-start":
+        toolStreak = undefined
         return
       case "text-start":
+        toolStreak = undefined
         yield* text.start(event.id)
         yield* events.publish(SessionEvent.Text.Started, {
           sessionID: input.sessionID,
@@ -266,6 +274,7 @@ export const createLLMEventPublisher = (events: EventV2.Interface, input: Input)
         yield* text.end(event.id)
         return
       case "reasoning-start":
+        toolStreak = undefined
         yield* reasoning.start(event.id)
         yield* events.publish(SessionEvent.Reasoning.Started, {
           sessionID: input.sessionID,
@@ -320,6 +329,10 @@ export const createLLMEventPublisher = (events: EventV2.Interface, input: Input)
         tool.called = true
         tool.providerExecuted = event.providerExecuted === true
         tool.providerMetadata = event.providerMetadata
+        const inputText = JSON.stringify(event.input)
+        if (toolStreak?.name !== event.name || toolStreak.inputText !== inputText)
+          toolStreak = { name: event.name, inputText, count: 1 }
+        else toolStreak = { ...toolStreak, count: toolStreak.count + 1 }
         yield* events.publish(SessionEvent.Tool.Called, {
           sessionID: input.sessionID,
           timestamp: yield* timestamp,
@@ -394,6 +407,7 @@ export const createLLMEventPublisher = (events: EventV2.Interface, input: Input)
         return
       }
       case "step-finish":
+        toolStreak = undefined
         yield* flush()
         assistantActive = false
         if (stepSettlement) return yield* Effect.die("Duplicate step finish")
@@ -413,6 +427,11 @@ export const createLLMEventPublisher = (events: EventV2.Interface, input: Input)
     flush,
     failAssistant,
     failUnsettledTools,
+    /** V1 doom-loop parity: true when the current assistant message holds DOOM_LOOP_THRESHOLD consecutive identical local tool calls. */
+    repeatedToolCalls: (name: string, input: unknown) =>
+      toolStreak?.name === name &&
+      toolStreak.inputText === JSON.stringify(input) &&
+      toolStreak.count >= DOOM_LOOP_THRESHOLD,
     hasActiveAssistant: () => assistantActive,
     hasAssistantStarted: () => assistantMessageID !== undefined,
     hasProviderError: () => providerFailed,
