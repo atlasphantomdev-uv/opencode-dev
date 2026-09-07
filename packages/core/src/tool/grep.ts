@@ -35,8 +35,9 @@ export const Output = Schema.Array(FileSystem.Match)
 type ModelOutput = typeof Output.Encoded
 
 /** Format raw search matches into the familiar concise model output. */
-export const toModelOutput = (output: ModelOutput) => {
-  const lines = output.length === 0 ? ["No files found"] : [`Found ${output.length} matches`]
+export const toModelOutput = (output: ModelOutput, limit?: number) => {
+  if (output.length === 0) return "No files found"
+  const lines = [`Found ${output.length} matches`]
   let current = ""
   for (const match of output) {
     if (current !== match.entry.path) {
@@ -46,6 +47,9 @@ export const toModelOutput = (output: ModelOutput) => {
     }
     lines.push(`  Line ${match.line}: ${match.text}`)
   }
+  // A clipped match set must not read as an exhaustive one.
+  if (limit !== undefined && output.length >= limit)
+    lines.push("", `Results truncated at the limit of ${limit}. Narrow the search or raise limit for more.`)
   return lines.join("\n")
 }
 
@@ -65,7 +69,7 @@ const layer = Layer.effectDiscard(
             "Search file contents by regular expression within the active Location or an absolute managed tool-output file. Use a path to narrow the search, include to filter files by glob, and limit to bound the match count. Returns concise file resources, line numbers, and bounded line previews.",
           input: Input,
           output: Output,
-          toModelOutput: ({ output }) => [
+          toModelOutput: ({ input, output }) => [
             {
               type: "text",
               text: toModelOutput(
@@ -73,6 +77,7 @@ const layer = Layer.effectDiscard(
                   ...match,
                   entry: { ...match.entry, path: path.resolve(location.directory, match.entry.path) },
                 })),
+                input.limit,
               ),
             },
           ],

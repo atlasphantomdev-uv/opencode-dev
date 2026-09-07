@@ -28,9 +28,17 @@ export const Input = Schema.Struct({
 export const Output = Schema.Array(FileSystem.Entry)
 type ModelOutput = typeof Output.Encoded
 
-/** Format raw search results into the concise line-oriented output models expect. */
-export const toModelOutput = (output: ModelOutput) => {
-  const lines = output.length === 0 ? ["No files found"] : output.map((item) => item.path)
+/**
+ * Format raw search results into the concise line-oriented output models expect.
+ *
+ * When the result set was clipped by `limit`, say so: a bare list is indistinguishable from a
+ * complete one, so a model can otherwise conclude a file does not exist when it was cut off.
+ */
+export const toModelOutput = (output: ModelOutput, limit?: number) => {
+  if (output.length === 0) return "No files found"
+  const lines = output.map((item) => item.path)
+  if (limit !== undefined && output.length >= limit)
+    lines.push("", `Results truncated at the limit of ${limit}. Narrow the pattern or raise limit for more.`)
   return lines.join("\n")
 }
 
@@ -49,11 +57,12 @@ const layer = Layer.effectDiscard(
             "Find files by glob pattern within the active Location. Returns concise relative file resources. Use a relative path to narrow the search and limit to bound the result count.",
           input: Input,
           output: Output,
-          toModelOutput: ({ output }) => [
+          toModelOutput: ({ input, output }) => [
             {
               type: "text",
               text: toModelOutput(
                 output.map((entry) => ({ ...entry, path: path.resolve(location.directory, entry.path) })),
+                input.limit,
               ),
             },
           ],
