@@ -28,6 +28,7 @@ import { SkillV2 } from "../skill"
 import { State } from "../state"
 import { FetchHttpClient, HttpClient } from "effect/unstable/http"
 import { AgentPlugin } from "./agent"
+import { AgentWhitelistPlugin } from "./agent-whitelist"
 import { CommandPlugin } from "./command"
 import { ModelsDevPlugin } from "./models-dev"
 import { ProviderPlugins } from "./provider"
@@ -119,6 +120,8 @@ const layer = Layer.effectDiscard(
         yield* add(ConfigExternalPlugin.Plugin)
         yield* add(ConfigProviderPlugin.Plugin)
         yield* add(VariantPlugin.Plugin)
+        // Runs last: skill and reference sources are only complete after the plugins above.
+        yield* add(AgentWhitelistPlugin.Plugin)
       }),
     ).pipe(Effect.withSpan("PluginInternal.boot"), Effect.forkScoped({ startImmediately: true }))
   }),
