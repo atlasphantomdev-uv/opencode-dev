@@ -99,6 +99,30 @@ describe("AgentV2", () => {
     }),
   )
 
+  it.effect("gives the build agent verification-first operator guidance", () =>
+    Effect.gen(function* () {
+      const agent = yield* AgentV2.Service
+      yield* AgentPlugin.Plugin.effect(host({ agent: agentHost(agent) })).pipe(
+        Effect.provideService(
+          Location.Service,
+          Location.Service.of(location({ directory: AbsolutePath.make("/project") })),
+        ),
+      )
+
+      const build = (yield* agent.all()).find((item) => String(item.id) === "build")
+      const system = build?.system ?? ""
+
+      // Completion must be evidence-based: changed files alone are not success.
+      expect(system).toContain("without having run them and seen them pass")
+      // Bounded recovery: do not repeat an action that already failed.
+      expect(system).toContain("Do not repeat an identical command or edit that already failed")
+      // Verification is proportional: targeted first, then broader.
+      expect(system).toContain("Prefer targeted verification first")
+      // Terminal failures stop rather than loop.
+      expect(system).toContain("Stop and report when a genuine blocker")
+    }),
+  )
+
   it.effect("does not ambiently opt built-in agents into bash", () =>
     Effect.gen(function* () {
       const agent = yield* AgentV2.Service
