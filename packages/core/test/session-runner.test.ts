@@ -36,6 +36,7 @@ import { SessionRunner } from "@opencode-ai/core/session/runner"
 import * as SessionRunnerLLM from "@opencode-ai/core/session/runner/llm"
 import { SessionRunnerModel } from "@opencode-ai/core/session/runner/model"
 import { ToolRegistry } from "@opencode-ai/core/tool/registry"
+import { GlobTool } from "@opencode-ai/core/tool/glob"
 import { ApplicationTools } from "@opencode-ai/core/tool/application-tools"
 import { AgentV2 } from "@opencode-ai/core/agent"
 import { Config } from "@opencode-ai/core/config"
@@ -3461,6 +3462,56 @@ describe("SessionRunnerLLM", () => {
       expect(yield* session.resume(sessionID).pipe(Effect.catchDefect(Effect.succeed))).toBe(
         "Tool input delta before start: call-1",
       )
+    }),
+  )
+
+  it.effect("delivers a truncation notice to the next provider request", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const applicationTools = yield* ApplicationTools.Service
+      const session = yield* SessionV2.Service
+      // Registered for this test only, rendering through the real glob formatter.
+      yield* applicationTools.register({
+        globlike: Tool.make({
+          description: "Return a clipped file list",
+          input: Schema.Struct({ limit: Schema.Number }),
+          output: Schema.Struct({ paths: Schema.Array(Schema.String) }),
+          toModelOutput: ({ input, output }) => [
+            {
+              type: "text",
+              text: GlobTool.toModelOutput(output.paths.map((path) => ({ path })) as never, input.limit),
+            },
+          ],
+          execute: ({ limit }) =>
+            Effect.succeed({ paths: Array.from({ length: limit }, (_, index) => `file-${index}.ts`) }),
+        }),
+      })
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "List files" }), resume: false })
+
+      requests.length = 0
+      responses = [
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.toolCall({ id: "call-glob", name: "globlike", input: { limit: 2 } }),
+          LLMEvent.stepFinish({ index: 0, reason: "tool-calls" }),
+          LLMEvent.finish({ reason: "tool-calls" }),
+        ],
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+          LLMEvent.finish({ reason: "stop" }),
+        ],
+      ]
+
+      yield* session.resume(sessionID)
+
+      // The continuation request must carry the tool result including the truncation notice,
+      // so the model can tell the clipped list apart from an exhaustive one.
+      expect(requests).toHaveLength(2)
+      const toolMessages = requests[1]?.messages.filter((message) => message.role === "tool") ?? []
+      const rendered = JSON.stringify(toolMessages)
+      expect(rendered).toContain("file-0.ts")
+      expect(rendered).toContain("Results truncated at the limit of 2")
     }),
   )
 })
