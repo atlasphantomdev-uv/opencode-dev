@@ -22,7 +22,10 @@ const instructionLayer = (input: {
   locationServiceLayer: Layer.Layer<Location.Service>
   filesystemLayer?: Layer.Layer<FSUtil.Service>
 }) =>
-  AppNodeBuilder.build(LayerNode.group([SystemContextRegistry.node, InstructionContext.node]), [
+  // These cases stub the filesystem to observe instruction discovery in isolation, so they use
+  // the Config-free variant: Config performs its own fs.up for config discovery, which would
+  // otherwise be indistinguishable from instruction discovery in these assertions.
+  AppNodeBuilder.build(LayerNode.group([SystemContextRegistry.node, InstructionContext.nodeWithoutConfig]), [
     [Global.node, Global.layerWith({ config: input.config })],
     [Location.node, input.locationServiceLayer],
     ...(input.filesystemLayer ? [[FSUtil.node, input.filesystemLayer] as const] : []),
