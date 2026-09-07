@@ -107,6 +107,8 @@ export const Plugin = define({
     ]
     const defaults: PermissionV2.Ruleset = [
       { action: "*", resource: "*", effect: "allow" },
+      // Match V1: repeated identical tool calls always require an explicit decision.
+      { action: "doom_loop", resource: "*", effect: "ask" },
       ...readonlyExternalDirectory,
       { action: "question", resource: "*", effect: "deny" },
       { action: "plan_enter", resource: "*", effect: "deny" },

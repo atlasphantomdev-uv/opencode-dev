@@ -29,11 +29,13 @@ import { SessionCompaction } from "../compaction"
 import { SessionEvent } from "../event"
 import { SessionHistory } from "../history"
 import { SessionInput } from "../input"
+import { SessionMessage } from "../message"
 import { SessionSchema } from "../schema"
 import { SessionStore } from "../store"
 import { type RunError, Service } from "./index"
 import { SessionRunnerModel } from "./model"
 import { SessionRunnerRetry } from "./retry"
+import { DoomLoop } from "../../tool/doom-loop"
 import { createLLMEventPublisher } from "./publish-llm-event"
 import { toLLMMessages } from "./to-llm-message"
 import { MAX_STEPS_PROMPT } from "./max-steps"
@@ -101,6 +103,7 @@ const layer = Layer.effect(
     const tools = yield* ToolRegistry.Service
     const models = yield* SessionRunnerModel.Service
     const store = yield* SessionStore.Service
+    const permissions = yield* PermissionV2.Service
     const location = yield* Location.Service
     const systemContext = yield* SystemContextRegistry.Service
     const skillGuidance = yield* SkillGuidance.Service
@@ -117,6 +120,34 @@ const layer = Layer.effect(
 
     const getContext = Effect.fn("SessionRunner.getContext")(function* (sessionID: SessionSchema.ID) {
       return yield* store.context(sessionID)
+    })
+
+    /**
+     * Match V1: the third consecutive identical non-pending call of one tool inside a single
+     * assistant message needs an explicit decision before it runs. The call has already been
+     * projected as `running` by the `tool-call` event, so it is the last of the three parts.
+     * A decline dies with `PermissionV2.DeclinedError` and halts the turn through the existing
+     * user-declined path.
+     */
+    const assertNotRepeating = Effect.fn("SessionRunner.assertNotRepeating")(function* (input: {
+      readonly sessionID: SessionSchema.ID
+      readonly agent: AgentV2.ID
+      readonly assistantMessageID: SessionMessage.ID
+      readonly call: { readonly id: string; readonly name: string; readonly input: unknown }
+    }) {
+      const entry = yield* store.message(input.assistantMessageID)
+      const message = entry?.message
+      if (message?.type !== "assistant") return
+      if (!DoomLoop.isRepeating(message.content, input.call.name, input.call.input)) return
+      yield* permissions.assert({
+        action: "doom_loop",
+        resources: [input.call.name],
+        save: [input.call.name],
+        sessionID: input.sessionID,
+        agent: input.agent,
+        metadata: { tool: input.call.name },
+        source: { type: "tool", messageID: input.assistantMessageID, callID: input.call.id },
+      })
     })
     const failInterruptedTools = Effect.fn("SessionRunner.failInterruptedTools")(function* (
       sessionID: SessionSchema.ID,
@@ -268,12 +299,22 @@ const layer = Layer.effect(
             const assistantMessageID = yield* publisher.assistantMessageID(event.id)
             yield* Effect.uninterruptibleMask((restore) =>
               restore(
-                toolMaterialization.settle({
+                assertNotRepeating({
                   sessionID: session.id,
                   agent: agent.id,
                   assistantMessageID,
                   call: event,
-                }),
+                }).pipe(
+                  Effect.catch(() => Effect.void),
+                  Effect.andThen(
+                    toolMaterialization.settle({
+                      sessionID: session.id,
+                      agent: agent.id,
+                      assistantMessageID,
+                      call: event,
+                    }),
+                  ),
+                ),
               ).pipe(
                 Effect.flatMap((settlement) =>
                   publish(
@@ -484,5 +525,6 @@ export const node = makeLocationNode({
     Config.node,
     Snapshot.node,
     Database.node,
+    PermissionV2.node,
   ],
 })
