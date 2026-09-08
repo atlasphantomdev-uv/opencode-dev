@@ -60,11 +60,16 @@ export function duration(input: number) {
 
 export function truncate(str: string, len: number): string {
   if (str.length <= len) return str
+  if (len <= 0) return ""
+  if (len <= 1) return "…"
   return str.slice(0, len - 1) + "…"
 }
 
 export function truncateLeft(str: string, len: number): string {
   if (str.length <= len) return str
+  if (len <= 0) return ""
+  // `slice(-0)` returns the whole string, so a zero-length tail must be handled explicitly.
+  if (len <= 1) return "…"
   return "…" + str.slice(-(len - 1))
 }
 
