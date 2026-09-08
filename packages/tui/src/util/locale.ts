@@ -70,12 +70,16 @@ export function truncateLeft(str: string, len: number): string {
 
 export function truncateMiddle(str: string, maxLength: number = 35): string {
   if (str.length <= maxLength) return str
+  if (maxLength <= 0) return ""
 
   const ellipsis = "…"
-  const keepStart = Math.ceil((maxLength - ellipsis.length) / 2)
-  const keepEnd = Math.floor((maxLength - ellipsis.length) / 2)
+  const available = maxLength - ellipsis.length
+  if (available <= 0) return ellipsis
+  const keepStart = Math.ceil(available / 2)
+  const keepEnd = Math.floor(available / 2)
 
-  return str.slice(0, keepStart) + ellipsis + str.slice(-keepEnd)
+  // `slice(-0)` returns the whole string, so an empty tail must be handled explicitly.
+  return str.slice(0, keepStart) + ellipsis + (keepEnd === 0 ? "" : str.slice(-keepEnd))
 }
 
 export function pluralize(count: number, singular: string, plural: string): string {
