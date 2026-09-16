@@ -1,6 +1,6 @@
 export * as SessionStore from "./store"
 
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { Context, Effect, Layer, Schema } from "effect"
 import { Database } from "../database/database"
 import { makeGlobalNode } from "../effect/app-node"
@@ -21,6 +21,8 @@ export interface Interface {
   readonly message: (
     messageID: SessionMessage.ID,
   ) => Effect.Effect<{ readonly sessionID: SessionSchema.ID; readonly message: SessionMessage.Message } | undefined>
+  readonly setTitle: (sessionID: SessionSchema.ID, title: string) => Effect.Effect<void>
+  readonly setTitleIf: (sessionID: SessionSchema.ID, expected: string, title: string) => Effect.Effect<boolean>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/v2/SessionStore") {}
@@ -55,6 +57,19 @@ const layer = Layer.effect(
               message: yield* decodeMessage({ ...row.data, id: row.id, type: row.type }).pipe(Effect.orDie),
             }
           : undefined
+      }),
+      setTitle: Effect.fn("SessionStore.setTitle")(function* (sessionID, title) {
+        yield* db.update(SessionTable).set({ title }).where(eq(SessionTable.id, sessionID)).run().pipe(Effect.orDie)
+      }),
+      setTitleIf: Effect.fn("SessionStore.setTitleIf")(function* (sessionID, expected, title) {
+        const result = yield* db
+          .update(SessionTable)
+          .set({ title })
+          .where(and(eq(SessionTable.id, sessionID), eq(SessionTable.title, expected)))
+          .returning({ id: SessionTable.id })
+          .all()
+          .pipe(Effect.orDie)
+        return result.length > 0
       }),
     })
   }),

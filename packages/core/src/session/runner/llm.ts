@@ -30,7 +30,7 @@ import { SessionCompaction } from "../compaction"
 import { SessionEvent } from "../event"
 import { SessionHistory } from "../history"
 import { SessionInput } from "../input"
-import { SessionSchema } from "../schema"
+import { SessionSchema, isDefaultTitle } from "../schema"
 import { SessionStore } from "../store"
 import { SystemPrompt } from "../system"
 import { type RunError, Service } from "./index"
@@ -41,6 +41,8 @@ import { MAX_STEPS_PROMPT } from "./max-steps"
 import { Snapshot } from "../../snapshot"
 import { makeLocationNode } from "../../effect/app-node"
 import { llmClient } from "../../effect/app-node-platform"
+import { eq } from "drizzle-orm"
+import { SessionContextEpochTable } from "../sql"
 
 /**
  * Runs one durable coding-agent Session until it settles.
@@ -54,7 +56,9 @@ import { llmClient } from "../../effect/app-node-platform"
  *   - [x] Publish live busy/idle status events around each drain; durable status follows the deferred recovery slice.
  *   - [ ] Honor interruption and reject stale work after runtime attachment replacement.
  *   - [x] Honor optional agent step limits.
- *   - [ ] Bound provider retries and repeated identical tool calls.
+ *   - [ ] Bound provider retries.
+ *   - [x] Restore the V1 doom-loop guard: repeated identical tool calls ask for
+ *     doom_loop approval (see repeatedToolCalls).
  *
  * - Runtime context assembly
  *   - Track V1 runtime-context parity canonically in `specs/v2/session.md`.
@@ -119,6 +123,32 @@ const layer = Layer.effect(
     const getContext = Effect.fn("SessionRunner.getContext")(function* (sessionID: SessionSchema.ID) {
       return yield* store.context(sessionID)
     })
+
+    type TurnSnapshot = {
+      readonly request: ReturnType<typeof LLM.request>
+      readonly step: number
+      readonly location: {
+        readonly directory: typeof location.directory
+        readonly workspaceID: typeof location.workspaceID
+      }
+      readonly epoch: number
+    }
+
+    const validateTurnSnapshot = Effect.fnUntraced(function* (sessionID: SessionSchema.ID, snapshot: TurnSnapshot) {
+      const session = yield* getSession(sessionID)
+      if (
+        session.location.directory !== snapshot.location.directory ||
+        session.location.workspaceID !== snapshot.location.workspaceID
+      )
+        return false
+      const epoch = yield* db
+        .select({ baselineSeq: SessionContextEpochTable.baseline_seq })
+        .from(SessionContextEpochTable)
+        .where(eq(SessionContextEpochTable.session_id, sessionID))
+        .get()
+        .pipe(Effect.orDie)
+      return epoch?.baselineSeq === snapshot.epoch
+    })
     const failInterruptedTools = Effect.fn("SessionRunner.failInterruptedTools")(function* (
       sessionID: SessionSchema.ID,
     ) {
@@ -168,6 +198,54 @@ const layer = Layer.effect(
     const continueAfterOverflowCompaction = (step: number) =>
       new TurnTransitionError({ _tag: "ContinueAfterOverflowCompaction", step })
 
+    const TITLE_AGENT_ID = "title" as const
+    const TITLE_MAX_CHARS = 100
+
+    /** Fire-and-forget title generation after the first successful provider turn.
+     *  Matches V1 SessionPrompt.ensureTitle semantics (packages/opencode/src/session/prompt.ts:193-252). */
+    const generateTitle = Effect.fn("SessionRunner.generateTitle")(function* (sessionID: SessionSchema.ID) {
+      const session = yield* getSession(sessionID)
+      if (session.parentID) return
+      if (!isDefaultTitle(session.title)) return
+      // Count real (non-synthetic) user messages in history to verify first turn.
+      const entries = yield* SessionHistory.entriesForRunner(db, sessionID, 0)
+      const userMessages = entries.filter((e) => e.message.type === "user")
+      if (userMessages.length === 0) return
+
+      const ag = yield* agents.get(AgentV2.ID.make(TITLE_AGENT_ID))
+      if (!ag) return
+      // V1 parity: models.resolve falls back to the default catalog model when session.model is absent.
+      const mdl = yield* models.resolve(session)
+      const request = LLM.request({
+        model: mdl,
+        system: [],
+        messages: [
+          { role: "user", content: "Generate a title for this conversation:\n" },
+          ...toLLMMessages(
+            userMessages.map((e) => e.message),
+            mdl,
+          ),
+        ],
+        tools: [],
+        toolChoice: "none",
+      })
+      const text = yield* llm.generate(request).pipe(
+        Effect.map((response) => response.text ?? ""),
+        Effect.catch(() => Effect.succeed("")),
+      )
+      if (!text) return
+      const cleaned = text
+        .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
+        .split("\n")
+        .map((line: string) => line.trim())
+        .find((line: string) => line.length > 0)
+      if (!cleaned) return
+      const t = cleaned.length > TITLE_MAX_CHARS ? cleaned.substring(0, TITLE_MAX_CHARS - 3) + "..." : cleaned
+      yield* store
+        .setTitleIf(sessionID, session.title, t)
+        .pipe(Effect.catch((cause) => Effect.logError("failed to persist title", { error: Cause.squash(cause) })))
+    })
+
     const loadSystemContext = (agent: AgentV2.Selection) =>
       Effect.all([systemContext.load(), skillGuidance.load(agent), referenceGuidance.load()], {
         concurrency: "unbounded",
@@ -205,29 +283,50 @@ const layer = Layer.effect(
       const isLastStep = agent.info?.steps !== undefined && currentStep >= agent.info.steps
       const toolMaterialization = isLastStep ? undefined : yield* tools.materialize(agent.info?.permissions)
       const promptCacheKey = /^ses_[0-9a-f]{64}$/.test(session.id) ? session.id.slice(4) : session.id
-      const request = LLM.request({
+      const turnSnapshotBase = {
+        session,
+        agent,
         model,
+        system,
+        entries,
+        context,
+        isLastStep,
+        toolMaterialization,
+        promptCacheKey,
+        promotion,
+        step: currentStep,
+        location: { directory: session.location.directory, workspaceID: session.location.workspaceID },
+        epoch: system.baselineSeq,
+      } as const
+      const request = LLM.request({
+        model: turnSnapshotBase.model,
         http: {
           headers: {
-            "x-session-affinity": session.id,
-            "X-Session-Id": session.id,
-            ...(session.parentID ? { "x-parent-session-id": session.parentID } : {}),
+            "x-session-affinity": turnSnapshotBase.session.id,
+            "X-Session-Id": turnSnapshotBase.session.id,
+            ...(turnSnapshotBase.session.parentID ? { "x-parent-session-id": turnSnapshotBase.session.parentID } : {}),
           },
         },
-        providerOptions: { openai: { promptCacheKey } },
+        providerOptions: { openai: { promptCacheKey: turnSnapshotBase.promptCacheKey } },
         system: [
-          agent.info?.system ? agent.info.system : SystemPrompt.provider(model),
-          SystemPrompt.declaration(model),
-          system.baseline,
+          turnSnapshotBase.agent.info?.system
+            ? turnSnapshotBase.agent.info.system
+            : SystemPrompt.provider(turnSnapshotBase.model),
+          SystemPrompt.declaration(turnSnapshotBase.model),
+          turnSnapshotBase.system.baseline,
         ]
           .filter((part) => part.length > 0)
           .map(SystemPart.make),
-        messages: [...toLLMMessages(context, model), ...(isLastStep ? [Message.assistant(MAX_STEPS_PROMPT)] : [])],
-        tools: toolMaterialization?.definitions ?? [],
-        toolChoice: isLastStep ? "none" : undefined,
+        messages: [
+          ...toLLMMessages(turnSnapshotBase.context, turnSnapshotBase.model),
+          ...(turnSnapshotBase.isLastStep ? [Message.assistant(MAX_STEPS_PROMPT)] : []),
+        ],
+        tools: turnSnapshotBase.toolMaterialization?.definitions ?? [],
+        toolChoice: turnSnapshotBase.isLastStep ? "none" : undefined,
       })
+      const turnSnapshot: TurnSnapshot = { ...turnSnapshotBase, request }
       if (yield* compaction.compactIfNeeded({ sessionID: session.id, entries, model, request }))
-        return yield* Effect.die(continueAfterCompaction(currentStep))
+        return yield* Effect.die(continueAfterCompaction(turnSnapshot.step))
       const startSnapshot = yield* snapshots.capture()
       const publisher = createLLMEventPublisher(events, {
         sessionID: session.id,
@@ -243,7 +342,8 @@ const layer = Layer.effect(
       const publish = (event: LLMEvent, outputPaths: ReadonlyArray<string> = []) =>
         withPublication(publisher.publish(event, outputPaths))
       let overflowFailure: ProviderErrorEvent | undefined
-      const providerStream = llm.stream(request).pipe(
+      if (!(yield* validateTurnSnapshot(session.id, turnSnapshot))) return yield* Effect.interrupt
+      const providerStream = llm.stream(turnSnapshot.request).pipe(
         Stream.runForEach((event) =>
           Effect.gen(function* () {
             if (overflowFailure || publisher.hasProviderError()) return
@@ -437,6 +537,7 @@ const layer = Layer.effect(
         yield* failInterruptedTools(input.sessionID)
         let promotion: SessionInput.Delivery | undefined = hasSteer ? "steer" : hasQueue ? "queue" : undefined
         let shouldRun = input.force || hasSteer || hasQueue
+        let firstTurnCompleted = false
         while (shouldRun) {
           let needsContinuation = true
           let step = 1
@@ -446,6 +547,10 @@ const layer = Layer.effect(
             step = result.step + 1
             promotion = "steer"
             if (!needsContinuation) needsContinuation = yield* SessionInput.hasPending(db, input.sessionID, "steer")
+          }
+          if (!firstTurnCompleted) {
+            firstTurnCompleted = true
+            yield* generateTitle(input.sessionID).pipe(Effect.catchDefect(() => Effect.void))
           }
           shouldRun = yield* SessionInput.hasPending(db, input.sessionID, "queue")
           promotion = shouldRun ? "queue" : undefined

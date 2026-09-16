@@ -3,6 +3,7 @@ import {
   LLMClient,
   LLMError,
   LLMEvent,
+  LLMResponse,
   Model,
   TransportReason,
   InvalidRequestReason,
@@ -65,6 +66,8 @@ const requests: LLMRequest[] = []
 let response: LLMEvent[] = []
 let responses: LLMEvent[][] | undefined
 let responseStream: Stream.Stream<LLMEvent, LLMError> | undefined
+let generateResponse: string | undefined
+let generateHook: Effect.Effect<void> | undefined
 let streamGate: Deferred.Deferred<void> | undefined
 let streamStarted: Deferred.Deferred<void> | undefined
 let streamFailure: LLMError | undefined
@@ -98,7 +101,23 @@ const client = Layer.succeed(
         ),
       )
     }) as unknown as LLMClientShape["stream"],
-    generate: () => Effect.die("unused"),
+    generate: () => {
+      if (generateResponse === undefined) return Effect.die("generate not configured for this test")
+      const text = generateResponse
+      generateResponse = undefined
+      return (generateHook ?? Effect.void).pipe(
+        Effect.andThen(
+          Effect.succeed(
+            LLMResponse.fromEvents([
+              LLMEvent.textStart({ id: "title" }),
+              LLMEvent.textDelta({ id: "title", text }),
+              LLMEvent.textEnd({ id: "title" }),
+              LLMEvent.finish({ reason: "stop" }),
+            ])!,
+          ),
+        ),
+      )
+    },
   }),
 )
 const model = Model.make({ id: "fake-model", provider: "fake", route: OpenAIChat.route })
@@ -242,17 +261,12 @@ const config = Layer.succeed(
       ]),
   }),
 )
-const runnerLayer = AppNodeBuilder.build(SessionRunnerLLM.node, [
-  [Snapshot.node, Snapshot.noopLayer],
-  [LayerNodePlatform.llmClient, client],
-  [SessionRunnerModel.node, models],
-  [SystemContextRegistry.node, systemContext],
-  [Location.node, Location.boundNode({ directory: AbsolutePath.make("/project") })],
-  [SkillGuidance.node, skillGuidance],
-  [ReferenceGuidance.node, referenceGuidance],
-  [PermissionV2.node, permission],
-  [Config.node, config],
-])
+const titleAgent = AgentV2.Info.make({
+  ...AgentV2.Info.empty(AgentV2.ID.make("title")),
+  model: { id: ModelV2.ID.make("fake-model"), providerID: ProviderV2.ID.make("fake") },
+  mode: "primary",
+  hidden: true,
+})
 const execution = Layer.effect(
   SessionExecution.Service,
   Effect.gen(function* () {
@@ -267,7 +281,7 @@ const execution = Layer.effect(
       interrupt: coordinator.interrupt,
     })
   }),
-).pipe(Layer.provide(runnerLayer))
+)
 const it = testEffect(
   AppNodeBuilder.build(
     LayerNode.group([
@@ -348,6 +362,8 @@ const setup = Effect.gen(function* () {
   maxActiveToolExecutions = 0
   permissionAsks = []
   permissionDeclines = false
+  generateResponse = undefined
+  generateHook = undefined
   permissionAsserts = 0
   yield* db
     .insert(ProjectTable)
@@ -356,6 +372,14 @@ const setup = Effect.gen(function* () {
     .run()
     .pipe(Effect.orDie)
   yield* insertSession(sessionID)
+  const agents = yield* AgentV2.Service
+  yield* agents.transform((editor) => {
+    editor.update(titleAgent.id, (agent) => {
+      agent.model = titleAgent.model
+      agent.mode = titleAgent.mode
+      agent.hidden = titleAgent.hidden
+    })
+  })
 })
 
 const providerUnavailable = () =>
@@ -605,7 +629,6 @@ describe("SessionRunnerLLM", () => {
       ]
 
       yield* session.resume(sessionID)
-
       expect(requests[0]?.tools.map((tool) => tool.name)).toContain("application_context")
       expect(contexts).toEqual([
         {
@@ -730,6 +753,67 @@ describe("SessionRunnerLLM", () => {
       expect(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)).toBe(true)
       expect(requests).toHaveLength(1)
       expect(yield* SessionInput.hasPending(db, sessionID, "steer")).toBe(true)
+    }),
+  )
+
+  it.effect("rejects a stale context epoch before provider request", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "First" }), resume: false })
+      yield* session.resume(sessionID)
+      requests.length = 0
+      modelResolveHook = Effect.gen(function* () {
+        yield* db
+          .update(SessionContextEpochTable)
+          .set({ baseline_seq: 999999 })
+          .where(eq(SessionContextEpochTable.session_id, sessionID))
+          .run()
+          .pipe(Effect.orDie)
+      })
+
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Second" }), resume: false })
+      const exit = yield* session.resume(sessionID).pipe(Effect.exit)
+
+      expect(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)).toBe(true)
+      expect(requests).toHaveLength(0)
+    }),
+  )
+
+  it.effect("permits a provider request when location and epoch stay current", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      response = []
+      requests.length = 0
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Current" }), resume: false })
+      yield* session.resume(sessionID)
+      expect(requests).toHaveLength(1)
+    }),
+  )
+
+  it.effect("captures a fresh snapshot for continuation turns", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      executions.length = 0
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Continue" }), resume: false })
+      requests.length = 0
+      responses = [
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.toolCall({ id: "call-fresh", name: "echo", input: { text: "fresh" } }),
+          LLMEvent.stepFinish({ index: 0, reason: "tool-calls" }),
+          LLMEvent.finish({ reason: "tool-calls" }),
+        ],
+        [],
+      ]
+
+      yield* session.resume(sessionID)
+
+      expect(requests).toHaveLength(2)
+      expect(executions).toContain("fresh")
     }),
   )
 
@@ -1770,7 +1854,7 @@ describe("SessionRunnerLLM", () => {
       ])
 
       yield* Deferred.succeed(providerGate, undefined)
-      yield* Effect.yieldNow
+      generateResponse = "Fix authentication bug"
       expect(requests).toHaveLength(1)
 
       yield* Deferred.succeed(toolExecutionGate, undefined)
@@ -2963,6 +3047,160 @@ describe("SessionRunnerLLM", () => {
     }),
   )
 
+  it.effect("does not ask doom_loop approval after only two identical tool calls", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Two identical calls" }), resume: false })
+
+      requests.length = 0
+      executions.length = 0
+      responses = [
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.toolCall({ id: "call-two-1", name: "echo", input: { text: "same" } }),
+          LLMEvent.toolCall({ id: "call-two-2", name: "echo", input: { text: "same" } }),
+          LLMEvent.stepFinish({ index: 0, reason: "tool-calls" }),
+          LLMEvent.finish({ reason: "tool-calls" }),
+        ],
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+          LLMEvent.finish({ reason: "stop" }),
+        ],
+      ]
+
+      yield* session.resume(sessionID)
+
+      expect(permissionAsserts).toBe(0)
+      expect(executions).toEqual(["same", "same"])
+      expect(requests).toHaveLength(2)
+    }),
+  )
+
+  it.effect("does not ask doom_loop approval when consecutive arguments differ", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+
+      yield* session.prompt({
+        sessionID,
+        prompt: Prompt.make({ text: "Repeated tool, different input" }),
+        resume: false,
+      })
+
+      requests.length = 0
+      executions.length = 0
+      responses = [
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.toolCall({ id: "call-args-1", name: "echo", input: { text: "same" } }),
+          LLMEvent.toolCall({ id: "call-args-2", name: "echo", input: { text: "same" } }),
+          LLMEvent.toolCall({ id: "call-args-3", name: "echo", input: { text: "different" } }),
+          LLMEvent.stepFinish({ index: 0, reason: "tool-calls" }),
+          LLMEvent.finish({ reason: "tool-calls" }),
+        ],
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+          LLMEvent.finish({ reason: "stop" }),
+        ],
+      ]
+
+      yield* session.resume(sessionID)
+
+      expect(permissionAsserts).toBe(0)
+      expect(executions).toEqual(["same", "same", "different"])
+      expect(requests).toHaveLength(2)
+    }),
+  )
+
+  it.effect("does not ask doom_loop approval when the consecutive tool name differs", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const registry = yield* ToolRegistry.Service
+      yield* registry.register({
+        repeat: Tool.make({
+          description: "Repeat text",
+          input: Schema.Struct({ text: Schema.String }),
+          output: Schema.Struct({ text: Schema.String }),
+          toModelOutput: ({ output }) => [{ type: "text", text: output.text }],
+          execute: ({ text }) =>
+            Effect.sync(() => {
+              executions.push(text)
+              return { text }
+            }),
+        }),
+      })
+
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Same input, different tool" }), resume: false })
+
+      requests.length = 0
+      executions.length = 0
+      responses = [
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.toolCall({ id: "call-name-1", name: "echo", input: { text: "same" } }),
+          LLMEvent.toolCall({ id: "call-name-2", name: "echo", input: { text: "same" } }),
+          LLMEvent.toolCall({ id: "call-name-3", name: "repeat", input: { text: "same" } }),
+          LLMEvent.stepFinish({ index: 0, reason: "tool-calls" }),
+          LLMEvent.finish({ reason: "tool-calls" }),
+        ],
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+          LLMEvent.finish({ reason: "stop" }),
+        ],
+      ]
+
+      yield* session.resume(sessionID)
+
+      expect(permissionAsserts).toBe(0)
+      expect(executions).toEqual(["same", "same", "same"])
+      expect(requests).toHaveLength(2)
+    }),
+  )
+
+  it.effect("asks doom_loop approval again for each identical call after the threshold", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Four identical calls" }), resume: false })
+
+      requests.length = 0
+      executions.length = 0
+      responses = [
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.toolCall({ id: "call-four-1", name: "echo", input: { text: "same" } }),
+          LLMEvent.toolCall({ id: "call-four-2", name: "echo", input: { text: "same" } }),
+          LLMEvent.toolCall({ id: "call-four-3", name: "echo", input: { text: "same" } }),
+          LLMEvent.toolCall({ id: "call-four-4", name: "echo", input: { text: "same" } }),
+          LLMEvent.stepFinish({ index: 0, reason: "tool-calls" }),
+          LLMEvent.finish({ reason: "tool-calls" }),
+        ],
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+          LLMEvent.finish({ reason: "stop" }),
+        ],
+      ]
+
+      yield* session.resume(sessionID)
+
+      expect(permissionAsserts).toBe(2)
+      expect(permissionAsks).toMatchObject([
+        { action: "doom_loop", resources: ["echo"], source: { type: "tool", callID: "call-four-3" } },
+        { action: "doom_loop", resources: ["echo"], source: { type: "tool", callID: "call-four-4" } },
+      ])
+      expect(executions).toEqual(["same", "same", "same", "same"])
+      expect(requests).toHaveLength(2)
+    }),
+  )
+
   it.effect("returns permission corrections to the model and continues", () =>
     Effect.gen(function* () {
       yield* setup
@@ -3725,6 +3963,282 @@ describe("SessionRunnerLLM", () => {
         { sessionID, status: { type: "busy" } },
         { sessionID, status: { type: "idle" } },
       ])
+    }),
+  )
+
+  it.effect("generates a title after the first successful provider turn", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const { db } = yield* Database.Service
+      yield* db
+        .update(SessionTable)
+        .set({ title: `New session - ${new Date().toISOString()}` })
+        .where(eq(SessionTable.id, sessionID))
+        .run()
+        .pipe(Effect.orDie)
+      const session = yield* SessionV2.Service
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Fix the auth bug" }), resume: false })
+
+      // Configure title generation response
+      generateResponse = "Fix authentication bug"
+      response = [
+        LLMEvent.stepStart({ index: 0 }),
+        LLMEvent.textStart({ id: "title-trigger" }),
+        LLMEvent.textDelta({ id: "title-trigger", text: "Done" }),
+        LLMEvent.textEnd({ id: "title-trigger" }),
+        LLMEvent.finish({ reason: "stop" }),
+      ]
+
+      yield* session.resume(sessionID)
+      // Verify the title was persisted
+      const store = yield* SessionStore.Service
+      const updated = yield* store.get(sessionID)
+      expect(updated?.title).toBe("Fix authentication bug")
+    }),
+  )
+
+  it.effect("does not overwrite a non-default title", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+
+      yield* db
+        .insert(SessionTable)
+        .values({
+          id: SessionV2.ID.make("ses_title_custom"),
+          project_id: Project.ID.global,
+          slug: "title-custom",
+          directory: "/project",
+          title: "My Custom Title",
+          version: "test",
+        })
+        .onConflictDoNothing()
+        .run()
+        .pipe(Effect.orDie)
+
+      generateResponse = "Should Not Appear"
+      response = [
+        LLMEvent.stepStart({ index: 0 }),
+        LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+        LLMEvent.finish({ reason: "stop" }),
+      ]
+
+      yield* session.prompt({
+        sessionID: SessionV2.ID.make("ses_title_custom"),
+        prompt: Prompt.make({ text: "Hello" }),
+        resume: false,
+      })
+      yield* session.resume(SessionV2.ID.make("ses_title_custom"))
+
+      const store = yield* SessionStore.Service
+      const updated = yield* store.get(SessionV2.ID.make("ses_title_custom"))
+      expect(updated?.title).toBe("My Custom Title")
+    }),
+  )
+
+  it.effect("truncates long titles to 100 characters", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+      const longTitle = "A".repeat(150)
+
+      yield* db
+        .insert(SessionTable)
+        .values({
+          id: SessionV2.ID.make("ses_title_long"),
+          project_id: Project.ID.global,
+          slug: "title-long",
+          directory: "/project",
+          title: `New session - ${new Date().toISOString()}`,
+          version: "test",
+        })
+        .onConflictDoNothing()
+        .run()
+        .pipe(Effect.orDie)
+
+      // Register the title agent
+      const agentSvc = yield* AgentV2.Service
+      yield* agentSvc.transform((editor) => {
+        editor.update(AgentV2.ID.make("title"), (agent) => {
+          agent.mode = "primary"
+          agent.hidden = true
+        })
+      })
+
+      generateResponse = longTitle
+      response = [
+        LLMEvent.stepStart({ index: 0 }),
+        LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+        LLMEvent.finish({ reason: "stop" }),
+      ]
+
+      yield* session.prompt({
+        sessionID: SessionV2.ID.make("ses_title_long"),
+        prompt: Prompt.make({ text: "Hello" }),
+        resume: false,
+      })
+      yield* session.resume(SessionV2.ID.make("ses_title_long"))
+
+      const store = yield* SessionStore.Service
+      const updated = yield* store.get(SessionV2.ID.make("ses_title_long"))
+      expect(updated?.title?.length).toBeLessThanOrEqual(100)
+      expect(updated?.title?.endsWith("...")).toBe(true)
+    }),
+  )
+
+  it.effect("does not generate a title on the second provider turn", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+
+      yield* db
+        .insert(SessionTable)
+        .values({
+          id: SessionV2.ID.make("ses_title_second"),
+          project_id: Project.ID.global,
+          slug: "title-second",
+          directory: "/project",
+          title: `New session - ${new Date().toISOString()}`,
+          version: "test",
+        })
+        .onConflictDoNothing()
+        .run()
+        .pipe(Effect.orDie)
+
+      // Register the title agent
+      const agentSvc = yield* AgentV2.Service
+      yield* agentSvc.transform((editor) => {
+        editor.update(AgentV2.ID.make("title"), (agent) => {
+          agent.mode = "primary"
+          agent.hidden = true
+        })
+      })
+
+      // First turn with title response
+      generateResponse = "First Title"
+      responses = [
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.toolCall({ id: "call-1", name: "echo", input: { text: "hi" } }),
+          LLMEvent.stepFinish({ index: 0, reason: "tool-calls" }),
+          LLMEvent.finish({ reason: "tool-calls" }),
+        ],
+        [
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+          LLMEvent.finish({ reason: "stop" }),
+        ],
+      ]
+
+      yield* session.prompt({
+        sessionID: SessionV2.ID.make("ses_title_second"),
+        prompt: Prompt.make({ text: "Hello" }),
+        resume: false,
+      })
+      yield* session.resume(SessionV2.ID.make("ses_title_second"))
+
+      const store = yield* SessionStore.Service
+      const mid = yield* store.get(SessionV2.ID.make("ses_title_second"))
+      expect(mid?.title).toBe("First Title")
+
+      // Second turn - title should NOT be regenerated
+      generateResponse = "Second Title Should Not Appear"
+      response = [
+        LLMEvent.stepStart({ index: 0 }),
+        LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+        LLMEvent.finish({ reason: "stop" }),
+      ]
+      yield* session.prompt({
+        sessionID: SessionV2.ID.make("ses_title_second"),
+        prompt: Prompt.make({ text: "Continue" }),
+        resume: false,
+      })
+      yield* session.resume(SessionV2.ID.make("ses_title_second"))
+
+      const after = yield* store.get(SessionV2.ID.make("ses_title_second"))
+      expect(after?.title).toBe("First Title")
+    }),
+  )
+
+  it.effect("title generation failure does not fail the main turn", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+
+      yield* db
+        .insert(SessionTable)
+        .values({
+          id: SessionV2.ID.make("ses_title_fail"),
+          project_id: Project.ID.global,
+          slug: "title-fail",
+          directory: "/project",
+          title: `New session - ${new Date().toISOString()}`,
+          version: "test",
+        })
+        .onConflictDoNothing()
+        .run()
+        .pipe(Effect.orDie)
+
+      // Register the title agent
+      const agentSvc = yield* AgentV2.Service
+      yield* agentSvc.transform((editor) => {
+        editor.update(AgentV2.ID.make("title"), (agent) => {
+          agent.mode = "primary"
+          agent.hidden = true
+        })
+      })
+
+      // Leave generateResponse undefined so generate dies
+      response = [
+        LLMEvent.stepStart({ index: 0 }),
+        LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+        LLMEvent.finish({ reason: "stop" }),
+      ]
+
+      yield* session.prompt({
+        sessionID: SessionV2.ID.make("ses_title_fail"),
+        prompt: Prompt.make({ text: "Hello" }),
+        resume: false,
+      })
+      const exit = yield* session.resume(SessionV2.ID.make("ses_title_fail")).pipe(Effect.exit)
+
+      // The main turn should succeed despite title generation failure
+      expect(Exit.isSuccess(exit)).toBe(true)
+    }),
+  )
+
+  it.effect("does not overwrite a title renamed during generation", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const { db } = yield* Database.Service
+      const session = yield* SessionV2.Service
+      yield* db
+        .update(SessionTable)
+        .set({ title: `New session - ${new Date().toISOString()}` })
+        .where(eq(SessionTable.id, sessionID))
+        .run()
+        .pipe(Effect.orDie)
+      generateResponse = "Generated title"
+      generateHook = db
+        .update(SessionTable)
+        .set({ title: "User title" })
+        .where(eq(SessionTable.id, sessionID))
+        .run()
+        .pipe(Effect.asVoid, Effect.orDie)
+      response = [
+        LLMEvent.stepStart({ index: 0 }),
+        LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+        LLMEvent.finish({ reason: "stop" }),
+      ]
+
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Hello" }), resume: false })
+      yield* session.resume(sessionID)
+
+      expect((yield* (yield* SessionStore.Service).get(sessionID))?.title).toBe("User title")
     }),
   )
 })

@@ -43,19 +43,16 @@ const layer = Layer.effectDiscard(
       const fromProject = relative(stop, start)
       const insideProject =
         fromProject === "" || (fromProject !== ".." && !fromProject.startsWith(`..${sep}`) && !isAbsolute(fromProject))
-      const discovered = new Set(
-        yield* Effect.forEach(
-          Flag.OPENCODE_DISABLE_PROJECT_CONFIG || !insideProject
-            ? []
-            : yield* fs.up({
-                targets: ["AGENTS.md"],
-                start,
-                stop,
-              }),
-          fs.resolve,
-        ),
-      )
-      const paths = Array.dedupe([yield* fs.resolve(join(global.config, "AGENTS.md")), ...discovered])
+      const candidates =
+        Flag.OPENCODE_DISABLE_PROJECT_CONFIG || !insideProject
+          ? []
+          : yield* fs.up({ targets: ["AGENTS.md", "CLAUDE.md", "CONTEXT.md"], start, stop })
+      const discovered = new Set(yield* Effect.forEach(candidates, fs.resolve))
+      const paths = Array.dedupe([
+        yield* fs.resolve(join(global.config, "AGENTS.md")),
+        yield* fs.resolve(join(global.home, ".claude", "CLAUDE.md")),
+        ...discovered,
+      ])
       const files = yield* Effect.forEach(
         paths,
         (path) =>
