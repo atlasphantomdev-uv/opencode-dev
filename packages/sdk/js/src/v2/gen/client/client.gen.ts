@@ -84,7 +84,7 @@ export const createClient = (config: Config = {}): Client => {
 
     // fetch must be assigned here, otherwise it would throw the error:
     // TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation
-    const _fetch = opts.fetch
+    const _fetch = opts.fetch!
     let response: Response
 
     try {
@@ -95,11 +95,11 @@ export const createClient = (config: Config = {}): Client => {
 
       for (const fn of interceptors.error.fns) {
         if (fn) {
-          finalError = (await fn(error, undefined as any, request, opts))
+          finalError = (await fn(error, undefined as any, request, opts)) as unknown
         }
       }
 
-      finalError = finalError || ({})
+      finalError = finalError || ({} as unknown)
 
       if (opts.throwOnError) {
         throw finalError
@@ -217,7 +217,7 @@ export const createClient = (config: Config = {}): Client => {
       }
     }
 
-    finalError = finalError || ({})
+    finalError = finalError || ({} as string)
 
     if (opts.throwOnError) {
       throw finalError
@@ -239,7 +239,7 @@ export const createClient = (config: Config = {}): Client => {
     return createSseClient({
       ...opts,
       body: opts.body as BodyInit | null | undefined,
-      headers: opts.headers,
+      headers: opts.headers as unknown as Record<string, string>,
       method,
       onRequest: async (url, init) => {
         let request = new Request(url, init)
