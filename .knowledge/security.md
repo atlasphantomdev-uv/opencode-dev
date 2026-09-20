@@ -3,8 +3,8 @@ type: "knowledge"
 name: "security"
 source_paths: ["packages/server/src/auth.ts","packages/server/src/middleware","packages/core/src/permission.ts","packages/core/src/permission","packages/core/src/credential.ts","packages/core/src/credential","packages/core/src/filesystem","packages/core/src/database","packages/core/src/session/sql.ts"]
 related: ["architecture","configuration"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "8c93e40eec539a2dae254f6296fec747d1f06d98a25cc6fbd18198dd38b855e7"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "ec5bea7bffc0b077c29011d6c71055a2782e7b87a06848b2e456e2ca641e02be"
 ---
 
 # security

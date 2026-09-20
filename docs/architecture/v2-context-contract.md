@@ -101,7 +101,7 @@ MCP lifecycle
   → Runner
 ```
 
-MCP lifecycle must live in a location-scoped integration layer outside Runner. The missing boundary is a V2 MCP adapter that converts discovered MCP tools into `ToolRegistry.register` capabilities with Scope cleanup. `ToolRegistry` already owns scoped overlays, materialization, identity capture, stale rejection, and settlement (`packages/core/src/tool/registry.ts:42-123`; `specs/v2/tools.md:135-180`).
+MCP lifecycle must live in a location-scoped integration layer outside Runner. That boundary now exists: `McpV2.toolsNode` (`packages/core/src/mcp.ts`) converts host-advertised MCP tools into `ToolRegistry.register` capabilities with Scope cleanup and refresh, and the host adapter (`packages/opencode/src/mcp/capability.ts`) supplies them from `MCP.Service`. `ToolRegistry` already owns scoped overlays, materialization, identity capture, stale rejection, and settlement (`packages/core/src/tool/registry.ts:42-123`; `specs/v2/tools.md:135-180`).
 
 Runner must not import V1 `MCP.Service`. V1 MCP owns transport/client state and broader resource APIs (`packages/opencode/src/mcp/index.ts:142-184`).
 
@@ -143,7 +143,7 @@ location-scoped LSP diagnostic collector
   → TurnSnapshot request context (not Context Epoch baseline)
 ```
 
-The existing pure formatter may be reused (`packages/opencode/src/lsp/diagnostic.ts:20-27`), but collector and lifecycle remain outside Runner. No V2 diagnostic producer exists today.
+The existing pure formatter is reused (`packages/opencode/src/lsp/diagnostic.ts:20-27`), and collector and lifecycle remain outside Runner. `LspV2` (`packages/core/src/lsp.ts`) is that producer seam; the host adapter (`packages/opencode/src/lsp/capability.ts`) implements it, and V2 `edit`/`write`/`apply_patch` consume the report.
 
 If diagnostics must become model-visible, use a separate per-turn observation field or explicit request-context mechanism. Do not register volatile diagnostics as ordinary `SystemContext`; this prevents changes from becoming durable epoch state. A future durable diagnostic source would need stable identity, unavailable/removal semantics, coalescing, and explicit retention policy.
 
@@ -275,7 +275,7 @@ OpenCode
     └── Context Epoch
 
 MCP lifecycle
-  → V2 MCP adapter
+  → V2 McpV2 seam (core) + host adapter (opencode)
   → ToolRegistry capabilities
   → Turn Snapshot → Runner
 

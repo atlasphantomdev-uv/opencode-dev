@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-session-ui"
 source_paths: ["packages/session-ui"]
 related: ["module-packages-client","module-packages-core","module-packages-sdk-js","module-packages-ui"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "bd401fffa491629da340ea4c55d87384c0766db0a90f918574ed143c883e7f55"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "29b0d9e0bdbeeb27ac07b35050b51f26a03e1be0cb9bc6dccc47f503a6632ab2"
 ---
 
 # packages/session-ui

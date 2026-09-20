@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-slack"
 source_paths: ["packages/slack"]
 related: ["module-packages-sdk-js"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "9dd6296a4c712e6de5d69165fa5a4a4ca009b8c37f3fe0333c2b48fdc8c24be7"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "da3120acbe2004f926c2934a9f04c1d7d3be96e78a16e48ccad32bd0c1272153"
 ---
 
 # packages/slack

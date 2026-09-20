@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-desktop"
 source_paths: ["packages/desktop"]
 related: []
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "6b1684135a4db5bbc983b15656df481dabfeea2257e59407951fec130a5385b0"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "d11473e89ffb1ca95ab73815be770131817466d605c678e70fc7512662e20b4b"
 ---
 
 # packages/desktop

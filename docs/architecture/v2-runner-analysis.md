@@ -39,8 +39,8 @@ Source code remains authority. D2 maps provide navigation only. Current source h
 
 - **D2 component:** `mcp.d2`: `MCP`, `Defs`, `V1Tools`, `V1System`, `V2Registry`, `V2Runner`, `Gap`.
 - **Actual source path:** V2 `packages/core/src/tool/registry.ts:42-121`; V2 runner `packages/core/src/session/runner/llm.ts:64-79,207-229`; V1 MCP `packages/opencode/src/mcp/index.ts:164-200`; V1 adapters `packages/opencode/src/session/tools.ts:41-79` and `session/system.ts:119-135`.
-- **Current flow:** V2 runner calls core `ToolRegistry.materialize(agent permissions)`. Core registry combines application tools and location-local registrations. No V2 MCP client/instruction adapter is passed into request assembly. V1 MCP exposes clients, tools, instructions, prompts, and resources; V1 tools/system prompt adapt them.
-- **Current behavior:** MCP visibility/parity is absent from V2 provider request. Runner source marks policy-filtered built-in, MCP, plugin, and structured-output definitions incomplete. V1 tests verify MCP instructions are omitted when all tools are denied (`packages/opencode/test/session/system.test.ts:112-166`).
+- **Current flow:** V2 runner calls core `ToolRegistry.materialize(agent permissions)`. Core registry combines application tools and location-local registrations, including MCP tools registered by `McpV2.toolsNode` from the host adapter; the runner also composes MCP instructions into system context (`packages/core/src/session/runner/llm.ts:254-261`). V1 MCP exposes clients, tools, instructions, prompts, and resources; V1 tools/system prompt adapt them.
+- **Current behavior:** V2 sessions receive MCP tools and instructions through the `McpV2` seam; plugin and structured-output policy filtering remain open. V1 tests verify MCP instructions are omitted when all tools are denied (`packages/opencode/test/session/system.test.ts:112-166`).
 - **Proposed change point:** First define V2 ownership for MCP discovery, registration, permission filtering, instruction context, and lifecycle. Then extend V2 location-scoped registry/context assembly. Do not make runner import V1 `MCP.Service` directly.
 - **Dependencies:** MCP client state/config, permissions, plugin tools, `ToolRegistry`, `SystemContext`, location services, provider request.
 - **Tests:** `packages/core/test/session-runner.test.ts` tool request/settlement coverage; `packages/opencode/test/session/system.test.ts:112-166`; `packages/opencode/test/mcp/*.test.ts`; core tool registry tests.
@@ -54,8 +54,8 @@ Source code remains authority. D2 maps provide navigation only. Current source h
 - **Current behavior:** Diagnostics remain package-opencode/V1-owned. Existing tests mostly stub LSP diagnostics; no dedicated V2 runner diagnostics behavior is present.
 - **Proposed change point:** Decide whether diagnostics are a V2 `SystemContext` source, tool output, or session event before touching runner. If context, integrate through `SystemContextRegistry`/epoch rather than direct LSP calls in `runTurnAttempt`.
 - **Dependencies:** LSP service, file/snapshot state, SystemContext, session history/epoch, permissions if exposed as tool.
-- **Tests:** `packages/opencode/test/session/prompt.test.ts:139-146`; `packages/opencode/src/lsp/diagnostic.ts:20-27`; inspect codemode diagnostic tests separately. No V2 diagnostics test found.
-- **Architectural impact:** Missing V2 capability/boundary. Formatting helper is local; making diagnostics visible to V2 model context is architectural.
+- **Tests:** `packages/opencode/test/session/prompt.test.ts:139-146`; `packages/opencode/src/lsp/diagnostic.ts:20-27`; V2 coverage lives in `packages/core/test/tool-diagnostics.test.ts` and `packages/opencode/test/lsp/capability.test.ts`.
+- **Architectural impact:** Implemented as a Core seam with a host adapter; the formatting helper stays local and diagnostics remain per-mutation tool output rather than durable context.
 
 ## 6. Continuation / steer input
 

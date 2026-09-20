@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-core"
 source_paths: ["packages/core"]
 related: ["module-packages-effect-drizzle-sqlite","module-packages-effect-sqlite-node","module-packages-llm","module-packages-plugin","module-packages-schema"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "d5ab762ebaa274342a1acf546f0adfb31770fe8e522a2be54a1160fc5acb79ab"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "96a63b4e6455c7bdfd739550bc798d9e20bd6647e27ecdf012787bbe2c62dcd1"
 ---
 
 # packages/core
@@ -17,4 +17,4 @@ Workspace runtime dependencies: @opencode-ai/effect-drizzle-sqlite, @opencode-ai
 
 Task names: db, fix-node-pty, migration, test, typecheck
 
-Source areas (82): account, account.ts, agent.ts, aisdk.ts, background-job.ts, catalog.ts, command.ts, config, config.ts, control-plane, credential, credential.ts, cross-spawn-spawner.ts, data-migration.sql.ts, database, effect, event, event.ts, file-mutation.ts, file.ts, filesystem, filesystem.ts, flag, fs-util.ts; see source directory for remaining areas
+Source areas (84): account, account.ts, agent.ts, aisdk.ts, background-job.ts, catalog.ts, command.ts, config, config.ts, control-plane, credential, credential.ts, cross-spawn-spawner.ts, data-migration.sql.ts, database, effect, event, event.ts, file-mutation.ts, file.ts, filesystem, filesystem.ts, flag, fs-util.ts; see source directory for remaining areas

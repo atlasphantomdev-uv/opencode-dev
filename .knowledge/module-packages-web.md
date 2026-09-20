@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-web"
 source_paths: ["packages/web"]
 related: []
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "380b5e7289f2c887b5ea702400dc02c32c1a0a0153451c3cafb83a6975d2a6e1"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "d4511aaba8324768290a21c221b0f6d5a8e505d48a6f0998ce09900cd32944ef"
 ---
 
 # packages/web

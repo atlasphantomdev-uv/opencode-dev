@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-script"
 source_paths: ["packages/script"]
 related: []
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "9fcf6a71a20f17cd74fb94b93e96a6fec4330dde379c0077c9eb551c4a6c8930"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "50e22658e3777205fa2eb83051d56a9c34ca875fb64fa9ea5cdcfac666b29b4d"
 ---
 
 # packages/script

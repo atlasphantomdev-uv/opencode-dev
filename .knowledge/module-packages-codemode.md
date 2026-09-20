@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-codemode"
 source_paths: ["packages/codemode"]
 related: []
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "d2f75b25069965e470fe23a1fd0ae1ca3086930d14a191d0c7476a9aa2770fca"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "a7abfd9c88398eab4b00a7838cf21604811d1e68887be518828a42e43916925c"
 ---
 
 # packages/codemode

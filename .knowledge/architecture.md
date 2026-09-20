@@ -3,8 +3,8 @@ type: "knowledge"
 name: "architecture"
 source_paths: ["packages/core/src/session.ts","packages/core/src/session","packages/core/src/system-context","packages/server/src/handlers/session.ts","packages/protocol/src","packages/schema/src"]
 related: ["integrations","security","workflows"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "5e79b7ed9f4791cacde4ea709db6c112a5f89296f02b4dcee991b2ed66cfa8ee"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "5d472c7c4b03ee0d941a6fdaa8833a99e5d7c4907a12c2be260c0bb61e66c53a"
 ---
 
 # architecture

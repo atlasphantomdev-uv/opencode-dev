@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-opencode"
 source_paths: ["packages/opencode"]
 related: ["module-packages-codemode","module-packages-llm","module-packages-plugin","module-packages-protocol","module-packages-schema","module-packages-script","module-packages-sdk-js","module-packages-server","module-packages-tui"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "abbea8633afcb1eed2681a1c3ab9b444f64cdc0523a402d1bd6edd5d31bee272"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "60ba9b31a1e0d61f7be8eea6ab201dfd113eaa815e5fc33298c66e3ce894d1eb"
 ---
 
 # packages/opencode

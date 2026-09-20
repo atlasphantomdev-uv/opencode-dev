@@ -3,8 +3,8 @@ type: "knowledge"
 name: "index"
 source_paths: ["package.json","packages/opencode/src/index.ts","packages/app/src/entry.tsx","packages/desktop/src/main/index.ts"]
 related: ["architecture","integrations","security","configuration","workflows","module-github","module-packages-app","module-packages-cli","module-packages-client","module-packages-codemode","module-packages-console-app","module-packages-console-core","module-packages-console-function","module-packages-console-mail","module-packages-console-resource","module-packages-console-support","module-packages-core","module-packages-desktop","module-packages-effect-drizzle-sqlite","module-packages-effect-sqlite-node","module-packages-enterprise","module-packages-function","module-packages-http-recorder","module-packages-httpapi-codegen","module-packages-llm","module-packages-opencode","module-packages-plugin","module-packages-protocol","module-packages-schema","module-packages-script","module-packages-sdk-next","module-packages-sdk-js","module-packages-server","module-packages-session-ui","module-packages-slack","module-packages-stats-app","module-packages-stats-core","module-packages-stats-server","module-packages-storybook","module-packages-tui","module-packages-ui","module-packages-web","module-sdks-vscode"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "8967efc51d25fc60476f106c52b8630a7b60be19dd4c51b3a2347b400287fdfb"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "b6a8d670b5fe4c16baeb26aad8274bcf93aebd2109b8642b52c0e7593b077676"
 ---
 
 # OpenCode repository knowledge

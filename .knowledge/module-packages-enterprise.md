@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-enterprise"
 source_paths: ["packages/enterprise"]
 related: ["module-packages-core","module-packages-session-ui","module-packages-ui"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "1def17bc7d203749913b1e574d4c2b7c0506573fb2f2ca3af24b5b2c70434844"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "34143cdcf9d6f6b9aab34698325ef65c7716c0e3004dd9b196bb80b4ca8db8de"
 ---
 
 # packages/enterprise

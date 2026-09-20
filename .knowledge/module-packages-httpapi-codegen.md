@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-httpapi-codegen"
 source_paths: ["packages/httpapi-codegen"]
 related: []
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "10463a14691c98690cf3036a6024707f12922dc28e885b971a596d3342fdaa37"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "7e00123562e54f772a19da4fb026f563901373d987ddfeb718b4acaba9db3247"
 ---
 
 # packages/httpapi-codegen

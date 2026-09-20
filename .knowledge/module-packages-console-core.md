@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-console-core"
 source_paths: ["packages/console/core"]
 related: ["module-packages-console-mail","module-packages-console-resource"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "c520d2ae9a2ceb076b18b796b389acc857fc9ddfb03dae0fe94c30064d5f497e"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "2544a12060aaa65c8a2720f89f74e04fe620919b104ba6a4bdc517c69ab3438f"
 ---
 
 # packages/console/core

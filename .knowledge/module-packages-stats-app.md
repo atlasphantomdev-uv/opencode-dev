@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-stats-app"
 source_paths: ["packages/stats/app"]
 related: ["module-packages-stats-core","module-packages-ui"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "ff26c892341956dfa56f7796f47bdd1b31e203ef3547ec245365f12c3039328a"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "73ebea6d5999b4953c463a7cf5857bfb688da43c0584f4e6e65af3d89953fb78"
 ---
 
 # packages/stats/app

@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-github"
 source_paths: ["github"]
 related: ["module-packages-sdk-js"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "5bedab7853742b8bb8d153a8aa3d4c9080e02b750269dcf311a6a58c9a341322"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "414e904a6f08930b3c75c48341ba303587edfc16e0b1bf48e79c5d6532d4700b"
 ---
 
 # github

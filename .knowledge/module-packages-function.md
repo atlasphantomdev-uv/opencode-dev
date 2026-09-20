@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-function"
 source_paths: ["packages/function"]
 related: []
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "d718364cecf403dcb5a82b61876909e2116b6a610d7887c9e5fb8ef0a27f5c10"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "9b9792fe85cb19e5bdce7b4dae8e25f3eebc5ecbd4aeae435a797cc92892d89a"
 ---
 
 # packages/function
@@ -15,6 +15,6 @@ Entry candidates: `packages/function/src/api.ts`
 
 Workspace runtime dependencies: none declared
 
-Task names: test
+Task names: test, typecheck
 
 Source areas (2): api.ts, github.ts

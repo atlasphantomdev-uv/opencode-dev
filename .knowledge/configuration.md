@@ -3,8 +3,8 @@ type: "knowledge"
 name: "configuration"
 source_paths: ["package.json","bun.lock","turbo.json","sst.config.ts","infra","packages/core/src/config.ts","packages/core/src/config","packages/core/src/flag","packages/opencode/src/config","packages/opencode/src/config/config.ts","packages/opencode/src/provider/provider.ts","packages/core/src/config/plugin/provider.ts","packages/core/src/plugin/internal.ts"]
 related: ["security","workflows"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "d2456da6d72f908a9fc5409c6284774d88baf12269d69eb1e7a9bc726827d594"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "bb2cbe77dc255515a1e86b2a3db0e53e8f582a7f0942e5dc89624df0b8465275"
 ---
 
 # configuration

@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-client"
 source_paths: ["packages/client"]
 related: ["module-packages-protocol","module-packages-schema"]
-last_verified_commit: "992242f7af4a30ae91404cc8485021392e8ea572"
-source_digest: "2eba4c93b70d0ca997d9c40a5d7dcc0c18a29ab8d055a53c4f970df9572bb9ab"
+last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
+source_digest: "fbeb01febd2ca24f558d7fd8d597519a1247d3d7db76bf82433a79f210702cf4"
 ---
 
 # packages/client
