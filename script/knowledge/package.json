@@ -1,0 +1,9 @@
+{
+  "name": "opencode-knowledge-tool",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "../../node_modules/.bin/tsgo --noEmit -p tsconfig.json"
+  }
+}

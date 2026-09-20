@@ -21,7 +21,14 @@
     "random": "echo 'Random script'",
     "sso": "aws sso login --sso-session=opencode --no-browser",
     "translate:app": "bun run script/translate-app.ts",
-    "test": "echo 'do not run tests from root' && exit 1"
+    "test": "echo 'do not run tests from root' && exit 1",
+    "knowledge:init": "bun run script/knowledge/update.ts init",
+    "knowledge:update": "bun run script/knowledge/update.ts update",
+    "knowledge:validate": "bun run script/knowledge/update.ts validate",
+    "knowledge:status": "bun run script/knowledge/update.ts status",
+    "knowledge:check": "bun run script/knowledge/update.ts check",
+    "knowledge:test": "bun run --cwd script/knowledge test",
+    "knowledge:typecheck": "bun run --cwd script/knowledge typecheck"
   },
   "workspaces": {
     "packages": [

@@ -1,5 +1,9 @@
 #!/bin/sh
 set -e
+# Advisory only: never regenerate or stage knowledge from a hook.
+if ! bun run knowledge:check; then
+  echo "Knowledge needs attention: run bun knowledge:update and bun knowledge:validate." >&2
+fi
 # Check if bun version matches package.json
 # keep in sync with packages/script/src/index.ts semver qualifier
 bun -e '
