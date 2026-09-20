@@ -1,0 +1,54 @@
+direction: right
+
+CLI: "CLI entry\npackages/opencode/src/index.ts:45-141"
+AppRuntime: "Application runtime\npackages/opencode/src/effect/app-runtime.ts:60-111"
+API: "HTTP API / route assembly\npackages/opencode/src/server/routes/instance/httpapi/server.ts:299-312"
+TUI: "TUI worker + event client\npackages/opencode/src/cli/cmd/tui.ts:42-56\npackages/opencode/src/cli/tui/worker.ts:54-80"
+
+Core: {
+  label: "packages/core"
+  Session: "V2 Session\npackages/core/src/session"
+  Execution: "SessionExecution + coordinator\npackages/core/src/session/execution/local.ts:10-35\nrun-coordinator.ts:5-15"
+  Runner: "SessionRunner implementation\npackages/core/src/session/runner/index.ts:19-28\nrunner/llm.ts:425-470"
+  Context: "SystemContextRegistry\npackages/core/src/system-context/registry.ts"
+  Epoch: "SessionContextEpoch\npackages/core/src/session/context-epoch.ts"
+  History: "Session history / mid-conversation messages\npackages/core/src/session/history.ts"
+  Snapshot: "Private immutable turn snapshot (proposed)\nrunner/llm.ts:204-230"
+  Model: "Location model resolution\npackages/core/src/session/runner/model.ts:181-218"
+  Tools: "Core ToolRegistry\npackages/core/src/tool/registry.ts"
+  Events: "EventV2 + session events\npackages/core/src/event.ts\npackages/core/src/session/event.ts"
+}
+
+Legacy: {
+  label: "V1 services in packages/opencode"
+  Prompt: "SessionPrompt\npackages/opencode/src/session/prompt.ts:102-149"
+  System: "SystemPrompt\npackages/opencode/src/session/system.ts:27-55"
+  Provider: "Provider loader\npackages/opencode/src/provider/provider.ts:107-149"
+  Agent: "Agent service\npackages/opencode/src/agent/agent.ts:88-104"
+  MCP: "MCP service\npackages/opencode/src/mcp/index.ts:140-184"
+  Diagnostics: "Diagnostics adapter\npackages/opencode/src/lsp/diagnostic.ts:20-27"
+}
+
+V2Diagnostics: "V2 diagnostic observation (proposed)\nvolatile, outside Runner"
+
+CLI -> AppRuntime: "assembles services"
+AppRuntime -> API: "provides app layers"
+TUI -> API: "RPC / global events"
+API -> Core.Session: "V2 services assembled\nserver.ts:299-303"
+API -> Legacy.Prompt: "V1 prompt handlers\nhandlers/session.ts:295-327"
+Core.Session -> Core.Execution: "wake/resume"
+Core.Execution -> Core.Runner: "location-scoped drain"
+Core.Runner -> Core.Context
+Core.Runner -> Core.Epoch: "durable baseline/snapshot"
+Core.Runner -> Core.History: "chronological history"
+Core.Runner -> Core.Snapshot: "freeze provider-visible inputs"
+Core.Runner -> Core.Model
+Core.Runner -> Core.Tools
+Core.Runner -> Core.Events: "publish status + LLM/session events"
+Legacy.Prompt -> Legacy.System
+Legacy.Prompt -> Legacy.Provider: "provider service"
+Legacy.Prompt -> Legacy.Agent
+Legacy.Prompt -> Legacy.MCP
+Legacy.Prompt -> Legacy.Diagnostics
+Legacy.Diagnostics -> V2Diagnostics: "migration source reference"
+V2Diagnostics -> Core.Snapshot: "optional per-turn observation"

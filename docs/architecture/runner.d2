@@ -1,0 +1,50 @@
+direction: down
+
+Drain: "SessionRunner.run\npackages/core/src/session/runner/llm.ts:425-465"
+Turn: "runTurnAttempt\nllm.ts:178-390"
+Snapshot: "Immutable TurnSnapshot\nprivate design boundary\nllm.ts:204-230"
+Session: "SessionStore + SessionContextEpoch\nllm.ts:184-205"
+Epoch: "ContextEpoch initialize/reconcile/replace\npackages/core/src/session/context-epoch.ts:23-77"
+Agent: "AgentV2 selection\nllm.ts:187"
+Registry: "SystemContextRegistry\npackages/core/src/system-context/registry.ts:12-44"
+System: "SystemContext registry + SystemPrompt\nregistry.ts:12-44\nllm.ts:173-176,220-226"
+Model: "SessionRunnerModel.resolve\npackages/core/src/session/runner/model.ts:181-218"
+History: "SessionHistory.entriesForRunner\nllm.ts:204-206"
+Tools: "ToolRegistry.materialize\nllm.ts:207-229"
+Request: "LLM.request\nllm.ts:210-229"
+Stream: "one llm.stream(request)\nllm.ts:248-317"
+Persist: "createLLMEventPublisher\npackages/core/src/session/runner/publish-llm-event.ts\nllm.ts:234-246"
+Settle: "tool settlement + results\nllm.ts:258-313"
+Interrupted: "interrupt/stale-tool cleanup\nllm.ts:124-144,337-357"
+Doom: "doom_loop permission\nllm.ts:265-287"
+Continue: "continuation / next turn\nllm.ts:387,443-453"
+Events: "Session status + durable session events"
+Diagnostics: "Volatile diagnostic observation\nnot Context Epoch"
+
+Drain -> Session: "load / pending input"
+Session -> Agent
+Session -> Epoch
+Registry -> Epoch: "compose sources before epoch admission"
+Epoch -> System: "baseline + sequence"
+Agent -> System
+System -> Snapshot
+Session -> Model
+Model -> Snapshot
+Session -> History
+History -> Snapshot
+Agent -> Tools
+Tools -> Snapshot
+Diagnostics -> Snapshot: "optional per-turn input"
+Snapshot -> Request
+Request -> Stream
+Stream -> Persist: "text, reasoning, usage, errors"
+Stream -> Settle: "local tool calls"
+Stream -> Interrupted: "interrupt / provider failure"
+Interrupted -> Settle: "fail unsettled tools"
+Settle -> Doom: "repeated identical calls"
+Doom -> Settle: "approve or halt"
+Settle -> Continue
+Continue -> Turn: "reload projected history / reassemble"
+Drain -> Events: "busy then idle"
+
+note: "Current V2 boundary. Runner owns orchestration and continuation. Tool registry definitions are core-owned; MCP/plugin/structured-output parity remains marked incomplete in source."

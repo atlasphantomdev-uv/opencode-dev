@@ -1,0 +1,30 @@
+direction: right
+
+HTTP: "V1 HTTP prompt handler\npackages/opencode/src/server/routes/instance/httpapi/handlers/session.ts:295-327\n→ SessionPrompt.prompt"
+V2Session: "V2 Session.prompt\npackages/core/src/session.ts:360-383"
+Admission: "SessionInput.admit\npackages/core/src/session/input.ts:41-81"
+Durable: "PromptAdmitted event + projected inbox\npackages/core/src/session/input.ts:54-75"
+Wake: "SessionExecution.wake/resume\npackages/core/src/session/execution/local.ts:31-36"
+Coord: "SessionRunCoordinator\npackages/core/src/session/run-coordinator.ts:5-15,67-103"
+Location: "LocationServiceMap\nprocess-local placement"
+Fence: "Location check / stale-run abort\npackages/core/src/session/runner/llm.ts:184-186\npackages/core/src/control-plane/move-session.ts:106-111"
+Runner: "SessionRunner.run\npackages/core/src/session/runner/llm.ts:425-465"
+Busy: "busy status"
+Idle: "idle + idle event"
+Steer: "steer promotion"
+Queue: "queue promotion\nafter continuation, before idle"
+
+HTTP -> Admission: "not direct; calls SessionPrompt"
+V2Session -> Admission: "admit one durable input"
+Admission -> Durable: "publish before execution"
+Durable -> Wake: "advisory wake"
+Wake -> Coord: "coalesce same Session"
+Coord -> Location: "load Session location"
+Location -> Fence: "validate current location"
+Fence -> Runner: "drain eligible work"
+Runner -> Busy
+Runner -> Steer: "promote at turn boundary"
+Runner -> Queue: "promote after idle/continuation"
+Runner -> Idle: "ensuring cleanup"
+
+note: "V2 invariant: durable prompt admission is separate from model execution. Same Session serializes; different Sessions may run concurrently."

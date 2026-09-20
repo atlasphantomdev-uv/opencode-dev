@@ -1,0 +1,20 @@
+direction: right
+
+Session: "Session model selection\npackages/core/src/session/runner/model.ts:188-204"
+Catalog: "Location Catalog\npackages/core/src/catalog"
+Integration: "Integration connection\npackages/core/src/integration\nmodel.ts:204-212"
+Resolved: "Resolved ModelV2"
+Request: "@opencode-ai/llm LLM.request\npackages/core/src/session/runner/llm.ts:210-229"
+Client: "LLMClient.stream\nllm.ts:248"
+SDK: "AI SDK language model\npackages/opencode/src/provider/provider.ts:113-140"
+Legacy: "V1 Provider service / loaders\npackages/opencode/src/provider/provider.ts:1213,1385-1490"
+
+Session -> Catalog: "selected/default/first supported"
+Catalog -> Integration: "provider integration"
+Integration -> Resolved
+Resolved -> Request
+Request -> Client
+Client -> SDK: "single provider turn"
+Legacy -> SDK: "languageModel loaders\nprovider.ts:113-140,165-171"
+
+note: "V2 resolves through location-scoped catalog/integration services. Legacy loader remains in packages/opencode and is not the V2 runner contract."
