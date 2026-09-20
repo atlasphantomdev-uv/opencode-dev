@@ -3,11 +3,10 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
+  // Global ignores: a config object that only carries `ignores` applies to every other config.
+  // Generated and frozen artifacts stay out of lint entirely, so neither `eslint .` nor
+  // `eslint --fix .` can rewrite output that only its generator owns.
   {
-    files: ["**/*.ts", "**/*.tsx"],
-    
     ignores: [
       "**/dist/**",
       "**/node_modules/**",
@@ -18,8 +17,19 @@ export default tseslint.config(
       "**/packages/storybook/.storybook/**",
       "**/packages/ui/src/**/*.stories.tsx",
       "**/*.gen.ts",
+      "**/sst-env.d.ts",
+      "**/sdk/js/src/gen/**",
+      "**/sdk/js/src/v2/gen/**",
+      "**/client/src/generated/**",
+      "**/client/src/generated-effect/**",
+      "**/desktop/src/bindings.ts",
     ],
-    
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -27,7 +37,7 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    
+
     rules: {
       // Temporarily disable these to reduce noise
       "@typescript-eslint/no-explicit-any": "off",
@@ -42,7 +52,7 @@ export default tseslint.config(
       "no-self-assign": "off",
       "no-undef": "off",
       "prefer-const": "warn",
-      
+
       // Keep these enabled
       "@typescript-eslint/ban-ts-comment": "warn",
       "@typescript-eslint/no-require-imports": "warn",
@@ -51,3 +61,4 @@ export default tseslint.config(
     }
   }
 );
+

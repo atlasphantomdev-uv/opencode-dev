@@ -112,8 +112,11 @@ if (sseTypesPatched === sseTypesSource) {
 }
 await Bun.write(sseTypesPath, sseTypesPatched)
 
-await $`bun prettier --write src/gen`
 await $`bun prettier --write src/v2`
+// `src/gen` is the frozen v1 compatibility client. It is still published through `./client` and
+// consumed by ACP, the CLI daemon, and the GitHub action, but this generator only emits the v2
+// tree from the current OpenAPI document. Never rewrite it here: regenerating it would change a
+// published surface without a client migration.
 await $`rm -rf dist`
 await $`bun tsc`
 await $`rm openapi.json`
