@@ -42,3 +42,10 @@
     animation-range: calc(100% - 1.1px) calc(100% - 1px);
   }
 }
+
+/* The empty editor still needs a zero-width space so the caret renders inside an empty
+   contenteditable. This lives in CSS rather than a Tailwind arbitrary value because the CSS
+   escape `\200B` is not a JavaScript string escape and only reads as one in JSX attribute text. */
+[data-component="prompt-input"]:empty::before {
+  content: "\200B";
+}

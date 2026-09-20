@@ -11,7 +11,7 @@ import type {
 import { Effect } from "effect"
 import { ACPSession } from "./session"
 import { ACPPermission } from "./permission"
-import { partsToContentChunks, type ReplayPart } from "./content"
+import { partsToContentChunks } from "./content"
 import {
   duplicateRunningToolUpdate,
   errorToolUpdate,

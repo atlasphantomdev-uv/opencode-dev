@@ -18,7 +18,7 @@ export class SyncServer extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
   }
-  async fetch() {
+  async fetch(): Promise<Response> {
     console.log("SyncServer subscribe")
 
     const webSocketPair = new WebSocketPair()
@@ -37,13 +37,13 @@ export class SyncServer extends DurableObject<Env> {
     })
   }
 
-  async webSocketMessage(_ws, _message) {}
+  async webSocketMessage(_ws: WebSocket, _message: string | ArrayBuffer) {}
 
-  async webSocketClose(ws, code, _reason, _wasClean) {
+  async webSocketClose(ws: WebSocket, code: number, _reason: string, _wasClean: boolean) {
     ws.close(code, "Durable Object is closing WebSocket")
   }
 
-  async publish(key: string, content: any) {
+  async publish(key: string, content: any): Promise<void | Response> {
     const sessionID = await this.getSessionID()
     if (
       !key.startsWith(`session/info/${sessionID}`) &&
@@ -66,7 +66,7 @@ export class SyncServer extends DurableObject<Env> {
     }
   }
 
-  public async share(sessionID: string) {
+  public async share(sessionID: string): Promise<string | undefined> {
     let secret = await this.getSecret()
     if (secret) return secret
     secret = randomUUID()
@@ -77,26 +77,26 @@ export class SyncServer extends DurableObject<Env> {
     return secret
   }
 
-  public async getData() {
+  public async getData(): Promise<Array<{ key: string; content: any }>> {
     const data = (await this.ctx.storage.list()) as Map<string, any>
     return Array.from(data.entries())
       .filter(([key, _]) => key.startsWith("session/"))
       .map(([key, content]) => ({ key, content }))
   }
 
-  public async assertSecret(secret: string) {
+  public async assertSecret(secret: string): Promise<void> {
     if (secret !== (await this.getSecret())) throw new Error("Invalid secret")
   }
 
-  private async getSecret() {
+  private async getSecret(): Promise<string | undefined> {
     return this.ctx.storage.get<string>("secret")
   }
 
-  private async getSessionID() {
+  private async getSessionID(): Promise<string | undefined> {
     return this.ctx.storage.get<string>("sessionID")
   }
 
-  async clear() {
+  async clear(): Promise<void> {
     const sessionID = await this.getSessionID()
     const list = await this.env.Bucket.list({
       prefix: `session/message/${sessionID}/`,
@@ -109,7 +109,7 @@ export class SyncServer extends DurableObject<Env> {
     await this.ctx.storage.deleteAll()
   }
 
-  static shortName(id: string) {
+  static shortName(id: string): string {
     return id.substring(id.length - 8)
   }
 }
@@ -178,9 +178,9 @@ export default new Hono<{ Bindings: Env }>()
     console.log("share_data", id)
     if (!id) return c.text("Error: Share ID is required", { status: 400 })
     const stub = c.env.SYNC_SERVER.get(c.env.SYNC_SERVER.idFromName(id))
-    const data = await stub.getData()
+    const data: Array<{ key: string; content: any }> = await stub.getData()
 
-    let info
+    let info: unknown
     const messages: Record<string, any> = {}
     data.forEach((d) => {
       const [root, type] = d.key.split("/")
@@ -203,7 +203,18 @@ export default new Hono<{ Bindings: Env }>()
     return c.json({ info, messages })
   })
   .post("/feishu", async (c) => {
-    const body = (await c.req.json())
+    const body = await c.req.json<{
+      challenge?: string
+      event?: {
+        message?: {
+          message_id?: string
+          root_id?: string
+          parent_id?: string
+          chat_id?: string
+          content?: string
+        }
+      }
+    }>()
     console.log(JSON.stringify(body, null, 2))
     const challenge = body.challenge
     if (challenge) return c.json({ challenge })
@@ -312,7 +323,7 @@ export default new Hono<{ Bindings: Env }>()
       // Verify permissions
       const userClient = new Octokit({ auth: token })
       const { data: repoData } = await userClient.repos.get({ owner, repo })
-      if (!repoData.permissions.admin && !repoData.permissions.push && !repoData.permissions.maintain)
+      if (!repoData.permissions?.admin && !repoData.permissions?.push && !repoData.permissions?.maintain)
         throw new Error("User does not have write permissions")
 
       // Get installation token
@@ -351,6 +362,7 @@ export default new Hono<{ Bindings: Env }>()
   .get("/get_github_app_installation", async (c) => {
     const owner = c.req.query("owner")
     const repo = c.req.query("repo")
+    if (!owner || !repo) return c.text("Error: owner and repo are required", { status: 400 })
 
     const auth = createAppAuth({
       appId: Resource.GITHUB_APP_ID.value,
