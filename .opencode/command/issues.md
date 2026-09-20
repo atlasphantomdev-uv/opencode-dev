@@ -1,6 +1,6 @@
 ---
 description: "find issue(s) on github"
-model: opencode/claude-haiku-4-5
+model: 9router/cx/gpt-5.4-mini
 ---
 
 Search through existing issues in anomalyco/opencode using the gh cli to find issues matching this query:
