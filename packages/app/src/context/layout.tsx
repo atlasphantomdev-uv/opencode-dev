@@ -274,7 +274,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         sidebar: {
           opened: false,
           width: DEFAULT_SIDEBAR_WIDTH,
-          workspaces: {},
+          workspaces: {} as Record<string, boolean>,
           workspacesDefault: false,
         },
         terminal: {
@@ -282,13 +282,13 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           opened: false,
         },
         review: {
-          diffStyle: "split",
+          diffStyle: "split" as ReviewDiffStyle,
           panelOpened: DEFAULT_REVIEW_PANEL_OPENED,
         },
         fileTree: {
           opened: false,
           width: DEFAULT_FILE_TREE_WIDTH,
-          tab: "changes",
+          tab: "changes" as "changes" | "all",
         },
         session: {
           width: DEFAULT_SESSION_WIDTH,
@@ -296,19 +296,19 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         mobileSidebar: {
           opened: false,
         },
-        sessionTabs: {},
-        sessionView: {},
+        sessionTabs: {} as Record<string, SessionTabs>,
+        sessionView: {} as Record<string, SessionView>,
         handoff: {
           tabs: undefined as TabHandoff | undefined,
         },
         home: {
-          selection: { server: server.key },
+          selection: { server: server.key } as HomeProjectSelection,
         },
       }),
     )
     const [ephemeral, setEphemeral] = createStore({
-      reviewPanelSource: "other",
-      sessionTabPreview: {},
+      reviewPanelSource: "other" as ReviewPanelSource,
+      sessionTabPreview: {} as Record<string, string | undefined>,
     })
 
     const MAX_SESSION_KEYS = 50

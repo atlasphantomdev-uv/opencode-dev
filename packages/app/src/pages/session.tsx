@@ -2141,15 +2141,16 @@ export default function Page() {
               collapsed: () => view().todoCollapsed.get(),
               onToggle: () => view().todoCollapsed.set(!view().todoCollapsed.get()),
             },
-            followup: () =>
-              params.id && !isChildSession()
-                ? {
-                    items: followupDock(),
-                    sending: sendingFollowup(),
-                    onSend: (id) => void sendFollowup(params.id, id, { manual: true }),
-                    onEdit: editFollowup,
-                  }
-                : undefined,
+            followup: () => {
+              const sessionID = params.id
+              if (!sessionID || isChildSession()) return undefined
+              return {
+                items: followupDock(),
+                sending: sendingFollowup(),
+                onSend: (id) => void sendFollowup(sessionID, id, { manual: true }),
+                onEdit: editFollowup,
+              }
+            },
             revert: () =>
               rolled().length > 0
                 ? {

@@ -88,13 +88,13 @@ export default function LegacyLayout(props: ParentProps) {
   const [store, setStore, , ready] = persisted(
     Persist.serverGlobal(serverSDK().scope, "layout.page", ["layout.page.v1"]),
     createStore({
-      lastProjectSession: {},
+      lastProjectSession: {} as { [directory: string]: { directory: string; id: string; at: number } },
       activeProject: undefined as string | undefined,
       activeWorkspace: undefined as string | undefined,
-      workspaceOrder: {},
-      workspaceName: {},
-      workspaceBranchName: {},
-      workspaceExpanded: {},
+      workspaceOrder: {} as Record<string, string[]>,
+      workspaceName: {} as Record<string, string>,
+      workspaceBranchName: {} as Record<string, Record<string, string>>,
+      workspaceExpanded: {} as Record<string, boolean>,
       gettingStartedDismissed: false,
     }),
   )
@@ -147,7 +147,7 @@ export default function LegacyLayout(props: ParentProps) {
 
   const [state, setState] = createStore({
     autoselect: !initialDirectory,
-    busyWorkspaces: {},
+    busyWorkspaces: {} as Record<string, boolean>,
     hoverProject: undefined as string | undefined,
     scrollSessionKey: undefined as string | undefined,
     nav: undefined as HTMLElement | undefined,
@@ -1517,7 +1517,7 @@ export default function LegacyLayout(props: ParentProps) {
   function DialogDeleteWorkspace(props: { root: string; directory: string }) {
     const name = createMemo(() => getFilename(props.directory))
     const [data, setData] = createStore({
-      status: "loading",
+      status: "loading" as "loading" | "ready" | "error",
       dirty: false,
     })
 
@@ -1575,7 +1575,7 @@ export default function LegacyLayout(props: ParentProps) {
   function DialogResetWorkspace(props: { root: string; directory: string }) {
     const name = createMemo(() => getFilename(props.directory))
     const [state, setState] = createStore({
-      status: "loading",
+      status: "loading" as "loading" | "ready" | "error",
       dirty: false,
       sessions: [] as Session[],
     })
@@ -1902,7 +1902,11 @@ export default function LegacyLayout(props: ParentProps) {
     navigateToProject,
     openSidebar: () => layout.sidebar.open(),
     closeProject,
-    showEditProjectDialog: (proj) => showEditProjectDialog(server.current, proj),
+    showEditProjectDialog: (proj) => {
+      const conn = server.current
+      if (!conn) return
+      showEditProjectDialog(conn, proj)
+    },
     toggleProjectWorkspaces,
     workspacesEnabled: (project) => project.vcs === "git" && layout.sidebar.workspaces(project.worktree)(),
     workspaceIds,
@@ -2049,7 +2053,9 @@ export default function LegacyLayout(props: ParentProps) {
                       <DropdownMenu.Content class="mt-1">
                         <DropdownMenu.Item
                           onSelect={() => {
-                            showEditProjectDialog(server.current, project)
+                            const conn = server.current
+                            if (!conn) return
+                            showEditProjectDialog(conn, project)
                           }}
                         >
                           <DropdownMenu.ItemLabel>{language.t("common.edit")}</DropdownMenu.ItemLabel>

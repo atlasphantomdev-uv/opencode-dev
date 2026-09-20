@@ -115,7 +115,10 @@ export function PaymentSection() {
                         {payment.paymentID ? (
                           <button
                             onClick={async () => {
-                              const receiptUrl = await downloadReceiptAction(params.id!, payment.paymentID)
+                              const workspaceID = params.id
+                              const paymentID = payment.paymentID
+                              if (!workspaceID || !paymentID) return
+                              const receiptUrl = await downloadReceiptAction(workspaceID, paymentID)
                               if (receiptUrl) {
                                 window.open(receiptUrl, "_blank")
                               }

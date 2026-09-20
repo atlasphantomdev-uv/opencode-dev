@@ -435,7 +435,7 @@ function ProviderConnection(props: {
     methodIndex: undefined as undefined | number,
     authorization: undefined as undefined | IntegrationOauthConnectOutput["data"],
     promptInputs: undefined as undefined | Record<string, string>,
-    state: "pending",
+    state: "pending" as undefined | "pending" | "complete" | "error" | "prompt",
     error: undefined as string | undefined,
   })
 
@@ -571,7 +571,7 @@ function ProviderConnection(props: {
 
   function AuthPromptsView() {
     const [formStore, setFormStore] = createStore({
-      value: {},
+      value: {} as Record<string, string>,
       index: 0,
     })
 

@@ -1494,16 +1494,21 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
     <>
       <For each={props.parts}>
         {(part, index) => {
-          const component = createMemo(() => PART_MAPPING[part.type as keyof typeof PART_MAPPING])
+          const last = () => index() === props.parts.length - 1
           return (
-            <Show when={component()}>
-              <Dynamic
-                last={index() === props.parts.length - 1}
-                component={component()}
-                part={part}
-                message={props.message}
-              />
-            </Show>
+            <Switch>
+              <Match when={part.type === "text" ? part : undefined}>
+                {(text) => <Dynamic component={PART_MAPPING.text} last={last()} part={text()} message={props.message} />}
+              </Match>
+              <Match when={part.type === "tool" ? part : undefined}>
+                {(tool) => <Dynamic component={PART_MAPPING.tool} last={last()} part={tool()} message={props.message} />}
+              </Match>
+              <Match when={part.type === "reasoning" ? part : undefined}>
+                {(reasoning) => (
+                  <Dynamic component={PART_MAPPING.reasoning} last={last()} part={reasoning()} message={props.message} />
+                )}
+              </Match>
+            </Switch>
           )
         }}
       </For>

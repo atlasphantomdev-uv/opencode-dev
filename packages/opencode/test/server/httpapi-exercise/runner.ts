@@ -16,7 +16,7 @@ import { ModelV2 } from "@opencode-ai/core/model"
 
 export function runScenario(options: Options) {
   return (scenario: Scenario) => {
-    if (scenario.kind === "todo") return Effect.succeed({ status: "skip", scenario })
+    if (scenario.kind === "todo") return Effect.succeed<Result>({ status: "skip", scenario })
     return runActive(options, scenario).pipe(
       Effect.timeoutOrElse({
         duration: options.scenarioTimeout,

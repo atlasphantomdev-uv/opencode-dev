@@ -43,7 +43,7 @@ export function TerminalPanel() {
   const [store, setStore] = createStore({
     autoCreated: false,
     activeDraggable: undefined as string | undefined,
-    recovered: {},
+    recovered: {} as Record<string, boolean>,
     view: typeof window === "undefined" ? 1000 : (window.visualViewport?.height ?? window.innerHeight),
   })
 

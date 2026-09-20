@@ -140,7 +140,9 @@ export function KeySection() {
                             data-color="ghost"
                             disabled={copied()}
                             onClick={async () => {
-                              await navigator.clipboard.writeText(key.key)
+                              const apiKey = key.key
+                              if (!apiKey) return
+                              await navigator.clipboard.writeText(apiKey)
                               setCopied(true)
                               setTimeout(() => setCopied(false), 1000)
                             }}

@@ -207,7 +207,7 @@ function createServerPermissionState(input: { sdk: ServerSDK; sync: ServerSync }
       },
     },
     createStore({
-      autoAccept: {},
+      autoAccept: {} as Record<string, boolean>,
     }),
   )
 

@@ -289,7 +289,9 @@ const layer = Layer.effect(
       if (!name) return output
       const s = yield* InstanceState.get(state)
       for (const hook of s.hooks) {
-        const fn = hook[name]
+        // `name` is generic, so TS resolves `hook[name]` to the union of all trigger signatures
+        // and demands an intersection of their arguments; the signature is fixed by `Name`.
+        const fn = hook[name] as ((input: Input, output: Output) => Promise<void>) | undefined
         if (!fn) continue
         yield* Effect.promise(async () => fn(input, output))
       }

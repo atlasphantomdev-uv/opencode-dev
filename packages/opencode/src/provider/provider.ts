@@ -1613,7 +1613,9 @@ const layer = Layer.effect(
 
           const options = yield* Effect.promise(() =>
             plugin.auth!.loader!(
-              () => bridge.promise(auth.get(providerID).pipe(Effect.orDie)),
+              // The loader contract requires a defined entry; the row was read above and only
+              // disappears if the store is mutated concurrently.
+              async () => (await bridge.promise(auth.get(providerID).pipe(Effect.orDie)))!,
               toPublicInfo(database[plugin.auth!.provider]),
             ),
           )

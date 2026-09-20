@@ -593,6 +593,7 @@ export function ServerConnectionList(props: { controller: ReturnType<typeof useS
       >
         {(i) => {
           const key = ServerConnection.key(i)
+          const current = props.controller.current()
           return (
             <div class="flex items-center gap-3 min-w-0 flex-1 w-full group/item">
               <div class="flex flex-col h-full items-center w-5">
@@ -613,7 +614,7 @@ export function ServerConnectionList(props: { controller: ReturnType<typeof useS
                 showCredentials
               />
               <div class="flex items-center justify-center gap-4 pl-4">
-                <Show when={props.controller.current() && ServerConnection.key(props.controller.current()) === key}>
+                <Show when={current && ServerConnection.key(current) === key}>
                   <Icon name="check" class="h-6" />
                 </Show>
 

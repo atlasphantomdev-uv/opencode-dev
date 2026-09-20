@@ -326,14 +326,14 @@ const layer = Layer.effect(
             return Effect.void
           }),
         )
-        if (result) return { client: result.client, status: { status: "connected" } }
+        if (result) return { client: result.client, status: { status: "connected" } as const }
         // If this was an auth error, stop trying other transports
         if (lastStatus?.status === "needs_auth" || lastStatus?.status === "needs_client_registration") break
       }
 
       return {
         client: undefined as MCPClient | undefined,
-        status: (lastStatus ?? { status: "failed", error: "Unknown error" }),
+        status: lastStatus ?? ({ status: "failed", error: "Unknown error" } as const),
       }
     })
 

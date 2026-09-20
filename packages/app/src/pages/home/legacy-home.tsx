@@ -104,7 +104,11 @@ export function LegacyHome() {
                     size="large"
                     variant="ghost"
                     class="text-14-mono text-left justify-between px-3"
-                    onClick={() => openProject(server.current, project.worktree)}
+                    onClick={() => {
+                      const conn = server.current
+                      if (!conn) return
+                      openProject(conn, project.worktree)
+                    }}
                   >
                     {project.worktree.replace(homedir(), "~")}
                     <div class="text-14-regular text-text-weak">

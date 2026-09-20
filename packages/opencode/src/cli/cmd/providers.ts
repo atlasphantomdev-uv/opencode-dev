@@ -332,13 +332,14 @@ export const ProvidersLoginCommand = effectCmd({
       yield* Prompt.log.info(`Running \`${wellknown.auth.command.join(" ")}\``)
       const abort = new AbortController()
       const proc = Process.spawn(wellknown.auth.command, { stdout: "pipe", stderr: "inherit", abort: abort.signal })
-      if (!proc.stdout) {
+      const stdout = proc.stdout
+      if (!stdout) {
         yield* Prompt.log.error("Failed")
         yield* Prompt.outro("Done")
         return
       }
       const [exit, token] = yield* cliTry("Failed to run auth provider command: ", () =>
-        Promise.all([proc.exited, text(proc.stdout)]),
+        Promise.all([proc.exited, text(stdout)]),
       ).pipe(Effect.ensuring(Effect.sync(() => abort.abort())))
       if (exit !== 0) {
         yield* Prompt.log.error("Failed")

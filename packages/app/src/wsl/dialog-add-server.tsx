@@ -12,7 +12,7 @@ import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useWslAddServerProbes } from "./add-server-probes"
 import { useWslServers } from "./context"
-import { addServerViewModel, type AddServerText } from "./settings-model"
+import { addServerViewModel, type AddServerText, type WslAddServerView } from "./settings-model"
 import "./dialog-add-wsl-server.css"
 
 function isWslRuntimeMissing(error: string | null | undefined) {
@@ -258,7 +258,7 @@ function useWslAddServerController(props: DialogWslServerProps) {
   const wslServers = useWslServers()
   const api = platform.wslServers!
   const [store, setStore] = createStore({
-    view: "main",
+    view: "main" as WslAddServerView,
     selectedDistro: null as string | null,
     catalogSearch: "",
     catalogTarget: null as string | null,
