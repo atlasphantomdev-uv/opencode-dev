@@ -29,8 +29,8 @@ const MCP_RESOURCE_TOOLS = {
   listTemplates: "list_mcp_resource_templates",
   read: "read_mcp_resource",
 } as const
-const MAX_MCP_RESOURCE_BLOB_BYTES = 10 * 1024 * 1024
-const SUPPORTED_MCP_RESOURCE_ATTACHMENT_MIMES = new Set([
+export const MAX_MCP_RESOURCE_BLOB_BYTES = 10 * 1024 * 1024
+export const SUPPORTED_MCP_RESOURCE_ATTACHMENT_MIMES = new Set([
   "application/pdf",
   "image/gif",
   "image/jpeg",
@@ -575,13 +575,15 @@ function formatMcpResourceContent(server: string, uri: string, content: { conten
   }
 }
 
-function base64Size(value: string) {
+/** Shared with the V2 MCP adapter for the same size notice wording. */
+export function base64Size(value: string) {
   const trimmed = value.replace(/\s/g, "")
   const padding = trimmed.endsWith("==") ? 2 : trimmed.endsWith("=") ? 1 : 0
   return Math.max(0, Math.floor((trimmed.length * 3) / 4) - padding)
 }
 
-function formatBytes(value: number) {
+/** Shared with the V2 MCP adapter for the same size notice wording. */
+export function formatBytes(value: number) {
   if (value < 1024) return `${value} B`
   if (value < 1024 * 1024) return `${Math.ceil(value / 1024)} KB`
   return `${Math.ceil(value / (1024 * 1024))} MB`

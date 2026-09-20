@@ -48,6 +48,21 @@ export function provider(model: Provider.Model) {
   return [PROMPT_DEFAULT]
 }
 
+/**
+ * Model-facing `<mcp_instructions>` rendering shared by the v1 system prompt and the V2
+ * `McpV2` host adapter, so both runtimes teach the model the same shape.
+ */
+export const mcpInstructions = (servers: ReadonlyArray<{ name: string; instructions: string }>) =>
+  [
+    "<mcp_instructions>",
+    ...servers.flatMap((server) => [
+      `  <server name="${server.name}">`,
+      ...server.instructions.split("\n").map((line) => `    ${line}`),
+      "  </server>",
+    ]),
+    "</mcp_instructions>",
+  ].join("\n")
+
 export interface Interface {
   readonly environment: (model: Provider.Model) => Effect.Effect<string[]>
   readonly skills: (agent: Agent.Info) => Effect.Effect<string | undefined>
@@ -123,15 +138,7 @@ const layer = Layer.effect(
         )
         if (instructions.length === 0) return
 
-        return [
-          "<mcp_instructions>",
-          ...instructions.flatMap((item) => [
-            `  <server name="${item.name}">`,
-            ...item.instructions.split("\n").map((line) => `    ${line}`),
-            "  </server>",
-          ]),
-          "</mcp_instructions>",
-        ].join("\n")
+        return mcpInstructions(instructions)
       }),
     })
   }),
