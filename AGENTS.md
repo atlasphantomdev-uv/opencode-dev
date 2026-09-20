@@ -83,11 +83,8 @@ V1 ground truth
 
 # 3. Architecture Investigation
 
-For architecture-sensitive work, use:
-
-`.cline/skills/architecture-investigation/SKILL.md`
-
-and its referenced architecture/parity documents.
+For architecture-sensitive work, inspect the repository's current architecture
+and parity documentation before making changes.
 
 Do not redesign architecture before understanding the existing system.
 
@@ -369,27 +366,35 @@ report.
 For parity work use:
 
 ## Ground Truth
+
 What V1 actually does, with file/test references.
 
 ## V2 Regression
+
 What V2 currently does differently.
 
 ## Invariant
+
 The exact behavior that must be preserved.
 
 ## Implementation
+
 What changed and why it is the smallest V2-native fix.
 
 ## Tests
+
 What regression tests were added and what they prove.
 
 ## Verification
+
 Exact commands and results.
 
 ## Pre-existing Failures
+
 Anything failing independently of the change.
 
 ## Scope
+
 What was intentionally not changed.
 
 Do not claim parity from code inspection alone when the behavior can be tested.
@@ -432,3 +437,12 @@ When rules conflict, prioritize:
 
 Never sacrifice correctness or architectural integrity merely to satisfy a
 style preference.
+
+## Repository knowledge navigation
+
+Before broad repository exploration, read `.knowledge/index.md` and only the
+focused documents relevant to the task. Treat knowledge as navigation/context,
+not authority. Verify implementation-critical assumptions against current source
+and tests; source wins on disagreement. After changes, review affected curated
+notes in `script/knowledge/catalog.ts`, run `bun knowledge:update`, then
+`bun knowledge:validate`. Do not load every knowledge document by default.

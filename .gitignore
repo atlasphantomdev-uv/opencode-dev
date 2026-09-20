@@ -28,7 +28,6 @@ target
 
 # Local dev files
 opencode-dev
-opencode-standalone/
 UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
