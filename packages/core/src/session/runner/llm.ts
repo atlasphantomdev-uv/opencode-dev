@@ -23,6 +23,8 @@ import { SessionStatusEvent } from "@opencode-ai/schema/session-status-event"
 import { SystemContextRegistry } from "../../system-context/registry"
 import { SkillGuidance } from "../../skill/guidance"
 import { ReferenceGuidance } from "../../reference/guidance"
+import { McpV2 } from "../../mcp"
+import { SessionReminder } from "../reminder"
 import { ToolRegistry } from "../../tool/registry"
 import { ToolOutputStore } from "../../tool-output-store"
 import { SessionContextEpoch } from "../context-epoch"
@@ -66,7 +68,8 @@ import { SessionContextEpochTable } from "../sql"
  * - One provider turn
  *   - [x] Translate every projected V2 Session message variant into canonical
  *     `@opencode-ai/llm` messages.
- *   - [ ] Resolve policy-filtered built-in, MCP, plugin, and structured-output tool definitions.
+ *   - [x] Resolve MCP tool definitions through the host `McpV2` capability.
+ *   - [ ] Resolve policy-filtered built-in, plugin, and structured-output tool definitions.
  *   - [x] Stream exactly one `llm.stream(request)` provider turn.
  *   - [x] Persist assistant text and usage events incrementally as they arrive.
  *   - [ ] Persist snapshots, patches, and retry notices incrementally as they arrive.
@@ -109,6 +112,8 @@ const layer = Layer.effect(
     const systemContext = yield* SystemContextRegistry.Service
     const skillGuidance = yield* SkillGuidance.Service
     const referenceGuidance = yield* ReferenceGuidance.Service
+    const mcp = yield* McpV2.Service
+    const reminder = yield* SessionReminder.Service
     const config = yield* Config.Service
     const snapshots = yield* Snapshot.Service
     const permission = yield* PermissionV2.Service
@@ -246,10 +251,17 @@ const layer = Layer.effect(
         .pipe(Effect.catch((cause) => Effect.logError("failed to persist title", { error: Cause.squash(cause) })))
     })
 
-    const loadSystemContext = (agent: AgentV2.Selection) =>
-      Effect.all([systemContext.load(), skillGuidance.load(agent), referenceGuidance.load()], {
-        concurrency: "unbounded",
-      }).pipe(Effect.map(SystemContext.combine))
+    const loadSystemContext = (agent: AgentV2.Selection, sessionID: SessionSchema.ID) =>
+      Effect.all(
+        [
+          systemContext.load(),
+          skillGuidance.load(agent),
+          referenceGuidance.load(),
+          mcp.instructions(agent),
+          reminder.load({ agent, sessionID }),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.map(SystemContext.combine))
 
     const runTurnAttempt = Effect.fn("SessionRunner.runTurn")(function* (
       sessionID: SessionSchema.ID,
@@ -261,7 +273,7 @@ const layer = Layer.effect(
       if (session.location.directory !== location.directory || session.location.workspaceID !== location.workspaceID)
         return yield* Effect.interrupt
       const agent = yield* agents.select(session.agent)
-      const initialized = yield* SessionContextEpoch.initialize(db, loadSystemContext(agent), session.id)
+      const initialized = yield* SessionContextEpoch.initialize(db, loadSystemContext(agent, session.id), session.id)
       const toolFibers = yield* FiberSet.make<void, ToolOutputStore.Error>()
       let needsContinuation = false
       let currentStep = step
@@ -276,7 +288,7 @@ const layer = Layer.effect(
         if (promoted > 0) currentStep = 1
       }
       const system =
-        initialized ?? (yield* SessionContextEpoch.prepare(db, events, loadSystemContext(agent), session.id))
+        initialized ?? (yield* SessionContextEpoch.prepare(db, events, loadSystemContext(agent, session.id), session.id))
       const model = yield* models.resolve(session)
       const entries = yield* SessionHistory.entriesForRunner(db, session.id, system.baselineSeq)
       const context = entries.map((entry) => entry.message)
@@ -359,6 +371,9 @@ const layer = Layer.effect(
               yield* withPublication(publisher.failUnsettledTools("Tools are disabled after the maximum agent steps"))
               return
             }
+            // Re-validate at the tool side-effect boundary: a Session that moved Location or whose
+            // Context Epoch advanced while this turn streamed must not settle stale tool calls.
+            if (!(yield* validateTurnSnapshot(session.id, turnSnapshot))) return yield* Effect.interrupt
             needsContinuation = true
             const assistantMessageID = yield* publisher.assistantMessageID(event.id)
             // V1 doom-loop parity: read the streak synchronously after publication so a concurrent
@@ -417,6 +432,16 @@ const layer = Layer.effect(
       return yield* Effect.uninterruptibleMask((restore) =>
         Effect.gen(function* () {
           const stream = yield* restore(providerStream).pipe(Effect.exit)
+          // The turn may have become stale while the provider streamed. Stop before settling
+          // results, capturing snapshots, or deciding continuation for an invalidated Session.
+          if (
+            stream._tag === "Success" &&
+            !(yield* restore(validateTurnSnapshot(session.id, turnSnapshot)))
+          ) {
+            yield* FiberSet.clear(toolFibers)
+            yield* withPublication(publisher.failUnsettledTools("Tool execution interrupted"))
+            return yield* Effect.interrupt
+          }
           const failure =
             stream._tag === "Failure" ? Option.getOrUndefined(Cause.findErrorOption(stream.cause)) : undefined
           if (
@@ -588,6 +613,8 @@ export const node = makeLocationNode({
     SystemContextRegistry.node,
     SkillGuidance.node,
     ReferenceGuidance.node,
+    McpV2.node,
+    SessionReminder.node,
     Config.node,
     Snapshot.node,
     Database.node,

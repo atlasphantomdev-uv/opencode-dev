@@ -55,6 +55,7 @@ import { SystemContext } from "@opencode-ai/core/system-context"
 import { SystemContextRegistry } from "@opencode-ai/core/system-context/registry"
 import { SkillGuidance } from "@opencode-ai/core/skill/guidance"
 import { ReferenceGuidance } from "@opencode-ai/core/reference/guidance"
+import { McpV2 } from "@opencode-ai/core/mcp"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { Location } from "@opencode-ai/core/location"
 import { ProviderV2 } from "@opencode-ai/core/provider"
@@ -244,6 +245,27 @@ const skillGuidance = Layer.mock(SkillGuidance.Service, {
     ),
 })
 const referenceGuidance = Layer.mock(ReferenceGuidance.Service, { load: () => Effect.succeed(SystemContext.empty) })
+let mcpBaseline: string | undefined
+const mcpHost = Layer.succeed(
+  McpV2.Service,
+  McpV2.Service.of({
+    instructions: () =>
+      Effect.succeed(
+        mcpBaseline === undefined
+          ? SystemContext.empty
+          : SystemContext.make({
+              key: SystemContext.Key.make("test/mcp"),
+              codec: Schema.toCodecJson(Schema.String),
+              load: Effect.succeed(mcpBaseline!),
+              baseline: String,
+              update: (previous, current) => `${previous} -> ${current}`,
+              removed: () => "MCP instructions removed",
+            }),
+      ),
+    tools: () => Effect.succeed({}),
+    changed: () => Stream.empty,
+  }),
+)
 const config = Layer.succeed(
   Config.Service,
   Config.Service.of({
@@ -313,6 +335,7 @@ const it = testEffect(
       [Location.node, Location.boundNode({ directory: AbsolutePath.make("/project") })],
       [SkillGuidance.node, skillGuidance],
       [ReferenceGuidance.node, referenceGuidance],
+      [McpV2.node, mcpHost],
       [Snapshot.node, Snapshot.noopLayer],
       [SessionExecution.node, execution],
       [Config.node, config],
@@ -350,6 +373,7 @@ const setup = Effect.gen(function* () {
   modelResolveHook = Effect.void
   currentModel = model
   skillBaselines.clear()
+  mcpBaseline = undefined
   responses = undefined
   streamFailure = undefined
   responseStream = undefined
@@ -793,6 +817,70 @@ describe("SessionRunnerLLM", () => {
     }),
   )
 
+  it.effect("rejects a stale context epoch before settling a streamed tool call", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Stale tool" }), resume: false })
+      requests.length = 0
+      response = [
+        LLMEvent.stepStart({ index: 0 }),
+        LLMEvent.toolCall({ id: "call-stale", name: "echo", input: { text: "stale" } }),
+        LLMEvent.stepFinish({ index: 0, reason: "tool-calls" }),
+        LLMEvent.finish({ reason: "tool-calls" }),
+      ]
+      streamStarted = yield* Deferred.make<void>()
+      streamGate = yield* Deferred.make<void>()
+
+      const runner = yield* SessionRunner.Service
+      const fiber = yield* runner.run({ sessionID, force: true }).pipe(Effect.forkChild)
+      yield* Deferred.await(streamStarted)
+      yield* db
+        .update(SessionContextEpochTable)
+        .set({ baseline_seq: 999999 })
+        .where(eq(SessionContextEpochTable.session_id, sessionID))
+        .run()
+        .pipe(Effect.orDie)
+      yield* Deferred.succeed(streamGate, undefined)
+
+      const exit = yield* Fiber.join(fiber).pipe(Effect.exit)
+
+      expect(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)).toBe(true)
+      expect(executions).toEqual([])
+      expect(requests).toHaveLength(1)
+    }),
+  )
+
+  it.effect("rejects a stale context epoch after a provider turn streams", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+      const fragment = fragmentFixture("text", "text-stale", ["Answer"])
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Stale turn" }), resume: false })
+      requests.length = 0
+      responseStream = Stream.concat(
+        Stream.fromIterable(fragment.completeEvents),
+        Stream.drain(
+          Stream.fromEffect(
+            db
+              .update(SessionContextEpochTable)
+              .set({ baseline_seq: 999999 })
+              .where(eq(SessionContextEpochTable.session_id, sessionID))
+              .run()
+              .pipe(Effect.orDie),
+          ),
+        ),
+      )
+
+      const exit = yield* session.resume(sessionID).pipe(Effect.exit)
+
+      expect(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)).toBe(true)
+      expect(requests).toHaveLength(1)
+    }),
+  )
+
   it.effect("captures a fresh snapshot for continuation turns", () =>
     Effect.gen(function* () {
       yield* setup
@@ -1036,6 +1124,111 @@ describe("SessionRunnerLLM", () => {
       yield* session.resume(sessionID)
 
       expect(requests.map((request) => request.system.at(-1)?.text)).toEqual(["Initial context\n\nBuild skills"])
+    }),
+  )
+
+  it.effect("combines host-provided MCP instructions into the system context", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      mcpBaseline = '<mcp_instructions>\n  <server name="fake">\n    Use only the fake server.\n  </server>\n</mcp_instructions>'
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "First" }), resume: false })
+
+      requests.length = 0
+      response = []
+      yield* session.resume(sessionID)
+
+      expect(requests.map((request) => request.system.at(-1)?.text)).toEqual([
+        `Initial context\n\n${mcpBaseline}`,
+      ])
+    }),
+  )
+
+  it.effect("omits MCP instructions when the host reports none", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "First" }), resume: false })
+
+      requests.length = 0
+      response = []
+      yield* session.resume(sessionID)
+
+      expect(requests.map((request) => request.system.at(-1)?.text)).toEqual(["Initial context"])
+    }),
+  )
+
+  it.effect("adds the v1 plan reminder while the plan agent is selected", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+      yield* db
+        .update(SessionTable)
+        .set({ agent: "plan" })
+        .where(eq(SessionTable.id, sessionID))
+        .run()
+        .pipe(Effect.orDie)
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Plan it" }), resume: false })
+
+      requests.length = 0
+      response = []
+      yield* session.resume(sessionID)
+
+      expect(requests[0]?.system.map((part) => part.text)).toContainEqual(
+        expect.stringContaining("# Plan Mode - System Reminder"),
+      )
+    }),
+  )
+
+  it.effect("admits the v1 build switch as a context update when the plan turn ends", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+      yield* db
+        .update(SessionTable)
+        .set({ agent: "plan" })
+        .where(eq(SessionTable.id, sessionID))
+        .run()
+        .pipe(Effect.orDie)
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Plan it" }), resume: false })
+
+      requests.length = 0
+      response = fragmentFixture("text", "text-plan", ["Plan ready"]).completeEvents
+      yield* session.resume(sessionID)
+      yield* db
+        .update(SessionTable)
+        .set({ agent: "build" })
+        .where(eq(SessionTable.id, sessionID))
+        .run()
+        .pipe(Effect.orDie)
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Build it" }), resume: false })
+      yield* session.resume(sessionID)
+
+      expect(requests[1]?.messages.at(-1)?.role).toBe("system")
+      expect(requests[1]?.messages.at(-1)?.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Your operational mode has changed from plan to build."),
+        },
+      ])
+    }),
+  )
+
+  it.effect("leaves the system context reminder-free without a plan turn", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Build it" }), resume: false })
+
+      requests.length = 0
+      response = []
+      yield* session.resume(sessionID)
+
+      expect(systemTexts(requests[0]!)).not.toContainEqual(
+        expect.stringContaining("operational mode has changed"),
+      )
     }),
   )
 

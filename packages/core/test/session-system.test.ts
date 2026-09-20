@@ -11,6 +11,8 @@ import promptGpt from "../src/session/prompt/gpt.txt"
 import promptKimi from "../src/session/prompt/kimi.txt"
 import promptMeta from "../src/session/prompt/meta.txt"
 import promptTrinity from "../src/session/prompt/trinity.txt"
+import promptPlan from "../src/session/prompt/plan.txt"
+import promptBuildSwitch from "../src/session/prompt/build-switch.txt"
 
 const make = (id: string, provider = "provider") => Model.make({ id, provider, route: OpenAIChat.route })
 
@@ -34,5 +36,13 @@ describe("SystemPrompt", () => {
     expect(SystemPrompt.declaration(make("fake-model", "fake"))).toBe(
       "You are powered by the model named fake-model. The exact model ID is fake/fake-model",
     )
+  })
+
+  it("keeps the fork policy sections the v1 assets also carry", () => {
+    // These copies are byte-identical to `packages/opencode/src/session/prompt`; both runtimes
+    // must keep the fork's engineering policy through upstream syncs.
+    expect(promptDefault).toContain("## Engineering Execution Loop")
+    expect(promptBuildSwitch).toContain("## Build Execution")
+    expect(promptPlan).toContain("# Plan Mode - System Reminder")
   })
 })

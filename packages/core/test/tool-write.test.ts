@@ -298,8 +298,10 @@ test("keeps the locked write schema, semantics docstring, and deferred UX TODOs 
     "Add formatter integration after V2 formatter runtime exists.",
     "Publish watcher/file-edit events after V2 watcher integration exists.",
     "Add snapshots / undo after design exists.",
-    "Add LSP notification and diagnostics after V2 LSP runtime exists.",
   ]) {
     expect(source).toContain(`TODO: ${todo}`)
   }
+  // The LSP TODO is resolved: diagnostics now reach the model through the LspV2 seam.
+  expect(source).not.toContain("Add LSP notification and diagnostics")
+  expect(source).toContain("LspV2.reportSafe")
 })

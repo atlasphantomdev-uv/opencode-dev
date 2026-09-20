@@ -60,6 +60,22 @@ type Config<
   }) => ReadonlyArray<Content>
 }
 
+/**
+ * JSON-Schema-native tools whose schemas are only known at runtime (MCP servers,
+ * plugin manifests). Mirrors `@opencode-ai/llm`'s dynamic tool mode: the input is
+ * `unknown` and the schema owner validates it.
+ */
+type DynamicConfig = {
+  readonly description: string
+  readonly jsonSchema: JsonSchema.JsonSchema
+  readonly outputSchema?: JsonSchema.JsonSchema
+  readonly execute: (input: unknown, context: Context) => Effect.Effect<unknown, ToolFailure>
+  readonly toModelOutput?: (input: {
+    readonly input: unknown
+    readonly output: unknown
+  }) => ReadonlyArray<Content>
+}
+
 type Runtime = {
   readonly permission?: string
   readonly definition: (name: string) => ToolDefinition
@@ -68,12 +84,48 @@ type Runtime = {
 
 const runtimes = new WeakMap<AnyTool, Runtime>()
 
+export function make(config: DynamicConfig): Definition<typeof Schema.Unknown, typeof Schema.Unknown>
 export function make<
   Input extends SchemaType<any>,
   Output extends SchemaType<any>,
   Structured extends SchemaType<any> = Output,
->(config: Config<Input, Output, Structured>): Definition<Input, Structured> {
-  const tool = Object.freeze({}) as Definition<Input, Structured>
+>(config: Config<Input, Output, Structured>): Definition<Input, Structured>
+export function make<
+  Input extends SchemaType<any>,
+  Output extends SchemaType<any>,
+  Structured extends SchemaType<any> = Output,
+>(config: Config<Input, Output, Structured> | DynamicConfig): Definition<any, any> {
+  if ("jsonSchema" in config) {
+    const tool = Object.freeze({}) as Definition<any, any>
+    const definitions = new Map<string, ToolDefinition>()
+    runtimes.set(tool, {
+      definition: (name) => {
+        const cached = definitions.get(name)
+        if (cached) return cached
+        const definition = new ToolDefinition({
+          name,
+          description: config.description,
+          inputSchema: config.jsonSchema,
+          ...(config.outputSchema === undefined ? {} : { outputSchema: config.outputSchema }),
+        })
+        definitions.set(name, definition)
+        return definition
+      },
+      settle: (call, context) =>
+        config.execute(call.input, context).pipe(
+          Effect.map((output) => ({
+            structured: output,
+            content: contentParts(
+              config.toModelOutput?.({ input: call.input, output }),
+              output,
+            ),
+          })),
+        ),
+    })
+    return tool
+  }
+
+  const tool = Object.freeze({}) as Definition<any, any>
   const definitions = new Map<string, ToolDefinition>()
   runtimes.set(tool, {
     definition: (name) => {
@@ -88,7 +140,7 @@ export function make<
       definitions.set(name, definition)
       return definition
     },
-    settle: (call, context) =>
+    settle: (call, context): Effect.Effect<ToolOutput, ToolFailure> =>
       Schema.decodeUnknownEffect(config.input)(call.input).pipe(
         Effect.mapError((error) => new ToolFailure({ message: `Invalid tool input: ${error.message}` })),
         Effect.flatMap((input) =>
@@ -112,17 +164,7 @@ export function make<
             ),
             Effect.map(({ output, structured }) => ({
               structured,
-              content:
-                config.toModelOutput?.({ input, output }).map((part) =>
-                  part.type === "text"
-                    ? { type: "text" as const, text: part.text }
-                    : {
-                        type: "file" as const,
-                        uri: `data:${part.mime};base64,${part.data}`,
-                        mime: part.mime,
-                        name: part.name,
-                      },
-                ) ?? (typeof output === "string" ? [{ type: "text" as const, text: output }] : []),
+              content: contentParts(config.toModelOutput?.({ input, output }), output),
             })),
           ),
         ),
@@ -153,6 +195,20 @@ function runtimeOf(tool: AnyTool) {
   const runtime = runtimes.get(tool)
   if (!runtime) throw new TypeError("Invalid Core Tool value")
   return runtime
+}
+
+/**
+ * Projects author-facing content into the model-facing shape the provider transports expect.
+ * A string output is the implicit single text part when a tool declares no projection.
+ */
+function contentParts(parts: ReadonlyArray<Content> | undefined, output: unknown): ToolOutput["content"] {
+  if (parts !== undefined)
+    return parts.map((part) =>
+      part.type === "text"
+        ? { type: "text" as const, text: part.text }
+        : { type: "file" as const, uri: `data:${part.mime};base64,${part.data}`, mime: part.mime, name: part.name },
+    )
+  return typeof output === "string" ? [{ type: "text" as const, text: output }] : []
 }
 
 function toJsonSchema(schema: Schema.Top): JsonSchema.JsonSchema {

@@ -8,6 +8,7 @@ import { makeLocationNode } from "../effect/app-node"
 import { FileMutation } from "../file-mutation"
 import { FSUtil } from "../fs-util"
 import { LocationMutation } from "../location-mutation"
+import { LspV2 } from "../lsp"
 import { Patch } from "../patch"
 import { PermissionV2 } from "../permission"
 import { ToolRegistry } from "./registry"
@@ -31,6 +32,9 @@ export const Applied = Schema.Struct({
 export const Output = Schema.Struct({
   applied: Schema.Array(Applied),
   files: Schema.Array(FileDiff.Info),
+  diagnostics: Schema.optional(
+    Schema.Array(Schema.Struct({ resource: Schema.String, block: Schema.String })),
+  ),
 })
 export type Output = typeof Output.Type
 
@@ -40,6 +44,12 @@ export const toModelOutput = (output: Output) =>
     ...output.applied.map(
       (item) => `${item.type === "add" ? "A" : item.type === "delete" ? "D" : "M"} ${item.resource}`,
     ),
+    // v1 wording: one block per mutated file, named as the model sees the path.
+    ...(output.diagnostics ?? []).flatMap((item) => [
+      "",
+      `LSP errors detected in ${item.resource}, please fix:`,
+      item.block,
+    ]),
   ].join("\n")
 
 type Prepared =
@@ -63,6 +73,7 @@ const layer = Layer.effectDiscard(
     const files = yield* FileMutation.Service
     const fs = yield* FSUtil.Service
     const permission = yield* PermissionV2.Service
+    const lsp = yield* LspV2.Service
 
     yield* tools
       .register({
@@ -185,7 +196,18 @@ const layer = Layer.effectDiscard(
                     }).pipe(Effect.mapError(() => fail(change.path))),
                   { discard: true },
                 )
-                return { applied, files: patchFiles }
+                const diagnostics: Array<{ resource: string; block: string }> = []
+                for (const item of applied) {
+                  if (item.type === "delete") continue
+                  const report = yield* LspV2.reportSafe(lsp, item.target)
+                  if (report.file.length === 0) continue
+                  diagnostics.push({ resource: item.resource, block: report.file })
+                }
+                return {
+                  applied,
+                  files: patchFiles,
+                  ...(diagnostics.length === 0 ? {} : { diagnostics }),
+                }
               }).pipe(Effect.mapError((error) => (error instanceof ToolFailure ? error : fail("patch"))))
             },
           }),
@@ -199,7 +221,7 @@ const layer = Layer.effectDiscard(
 export const node = makeLocationNode({
   name: "tool/apply-patch",
   layer,
-  deps: [ToolRegistry.node, LocationMutation.node, FileMutation.node, FSUtil.node, PermissionV2.node],
+  deps: [ToolRegistry.node, LocationMutation.node, FileMutation.node, FSUtil.node, PermissionV2.node, LspV2.node],
 })
 
 function patchFile(change: Prepared): typeof FileDiff.Info.Type {

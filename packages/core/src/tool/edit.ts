@@ -14,6 +14,7 @@ import { makeLocationNode } from "../effect/app-node"
 import { FileMutation } from "../file-mutation"
 import { FSUtil } from "../fs-util"
 import { LocationMutation } from "../location-mutation"
+import { LspV2 } from "../lsp"
 import { PermissionV2 } from "../permission"
 import { ToolRegistry } from "./registry"
 import { Tool } from "./tool"
@@ -36,6 +37,7 @@ export const Input = Schema.Struct({
 export const Output = Schema.Struct({
   files: Schema.Array(FileDiff.Info),
   replacements: Schema.Number,
+  diagnostics: Schema.optional(Schema.String),
 })
 export type Output = typeof Output.Type
 
@@ -78,6 +80,10 @@ export const toModelOutput = (output: Output, oldString: string, newString: stri
     ...previewLines(oldString, "-"),
     ...previewLines(newString, "+"),
     "```",
+    // v1 wording: the model is told to fix the errors this edit introduced.
+    ...(output.diagnostics === undefined
+      ? []
+      : ["", "LSP errors detected in this file, please fix:", output.diagnostics]),
   ].join("\n")
 
 /** Deferred V2 edit behavior and UX integrations remain visible at the model-facing seam. */
@@ -85,7 +91,6 @@ export const toModelOutput = (output: Output, oldString: string, newString: stri
 // TODO: Add formatter integration after V2 formatter runtime exists.
 // TODO: Publish watcher/file-edit events after V2 watcher integration exists.
 // TODO: Add snapshots / undo after design exists.
-// TODO: Add LSP notification and diagnostics after V2 LSP runtime exists.
 
 const layer = Layer.effectDiscard(
   Effect.gen(function* () {
@@ -94,6 +99,7 @@ const layer = Layer.effectDiscard(
     const files = yield* FileMutation.Service
     const fs = yield* FSUtil.Service
     const permission = yield* PermissionV2.Service
+    const lsp = yield* LspV2.Service
 
     yield* tools
       .register({
@@ -195,6 +201,7 @@ const layer = Layer.effectDiscard(
                     content: joinBom(next.text, source.bom || next.bom),
                   }),
                 )
+                const report = yield* LspV2.reportSafe(lsp, target.canonical)
                 return {
                   files: [
                     {
@@ -205,6 +212,7 @@ const layer = Layer.effectDiscard(
                     },
                   ],
                   replacements,
+                  ...(report.file.length === 0 ? {} : { diagnostics: report.file }),
                 } satisfies Output
               })
             },
@@ -219,5 +227,5 @@ const layer = Layer.effectDiscard(
 export const node = makeLocationNode({
   name: "tool/edit",
   layer,
-  deps: [ToolRegistry.node, LocationMutation.node, FileMutation.node, FSUtil.node, PermissionV2.node],
+  deps: [ToolRegistry.node, LocationMutation.node, FileMutation.node, FSUtil.node, PermissionV2.node, LspV2.node],
 })
