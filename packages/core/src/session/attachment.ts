@@ -36,6 +36,19 @@ const basename = (value: string) => {
   return path.basename(trimmed) || undefined
 }
 
+/**
+ * `fileURLToPath` throws synchronously for host-form or otherwise malformed file URLs. Convert
+ * defensively so an unreadable scheme becomes a deterministic omission instead of an admission
+ * defect.
+ */
+const localPathFromUri = (uri: string) => {
+  try {
+    return fileURLToPath(uri)
+  } catch {
+    return undefined
+  }
+}
+
 const normalizeEntry = (entry: FileSystem.Entry) => {
   const name = entry.path.replace(/[\\/]+$/, "")
   return entry.type === "directory" ? `${name}/` : name
@@ -123,7 +136,8 @@ export const materialize = (input: PromptInput.Prompt) =>
 
         if (/^https?:\/\//i.test(file.uri)) return omission(file, "remote URL sources are not supported")
 
-        const raw = file.uri.startsWith("file:") ? fileURLToPath(file.uri) : file.uri
+        const raw = file.uri.startsWith("file:") ? localPathFromUri(file.uri) : file.uri
+        if (raw === undefined) return omission(file, "path could not be resolved inside the Location")
         const target = yield* mutation.resolve({ path: raw }).pipe(Effect.catch(() => Effect.succeed(undefined)))
         if (target === undefined) return omission(file, "path could not be resolved inside the Location")
         if (target.externalDirectory !== undefined) return omission(file, "outside the Location")

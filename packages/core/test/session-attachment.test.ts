@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import path from "path"
+import { pathToFileURL } from "url"
 import { DateTime, Effect } from "effect"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNodePlatform } from "@opencode-ai/core/effect/app-node-platform"
@@ -142,6 +143,50 @@ describe("SessionAttachment.materialize", () => {
       })
       const attachment = prompt.files?.[0]
       expect(decode(attachment?.uri ?? "")).toBe("[Attachment omitted: hosts — outside the Location]")
+    }),
+  )
+
+  it.effect("omits a malformed host-form file URI without defecting admission", () =>
+    Effect.gen(function* () {
+      const prompt = yield* SessionAttachment.materialize({
+        text: "read",
+        files: [{ uri: "file://remotehost/etc/hosts", name: "hosts" }],
+      })
+      const attachment = prompt.files?.[0]
+      expect(attachment?.mime).toBe("text/plain")
+      expect(decode(attachment?.uri ?? "")).toBe(
+        "[Attachment omitted: hosts — path could not be resolved inside the Location]",
+      )
+      const messages = toLLMMessages(
+        [
+          SessionMessage.User.make({
+            id: SessionMessage.ID.make("msg_malformed"),
+            type: "user",
+            text: "prompt",
+            files: prompt.files,
+            time: { created: DateTime.makeUnsafe(0) },
+          }),
+        ],
+        model,
+      )
+      expect(messages[0]?.content).toEqual([
+        { type: "text", text: "prompt" },
+        { type: "text", text: "[Attachment omitted: hosts — path could not be resolved inside the Location]" },
+      ])
+    }),
+  )
+
+  it.effect("materializes a valid local file: URI", () =>
+    Effect.gen(function* () {
+      const { directory, fs } = yield* fixture
+      const file = path.join(directory, "uri.txt")
+      yield* fs.writeWithDirs(file, "from uri")
+      const prompt = yield* SessionAttachment.materialize({
+        text: "read",
+        files: [{ uri: pathToFileURL(file).href, name: "uri.txt" }],
+      })
+      expect(prompt.files?.[0]?.mime).toBe("text/plain")
+      expect(decode(prompt.files?.[0]?.uri ?? "")).toBe("from uri")
     }),
   )
 
