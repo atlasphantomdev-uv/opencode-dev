@@ -32,6 +32,7 @@ const lsp = Layer.effect(
   LspV2.Host,
   Effect.gen(function* () {
     return LspV2.Host.of({
+      ...LspV2.disabledHost,
       report: (directory, absolute) =>
         Effect.sync(() => {
           touched.push(absolute)

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { LspV2 } from "@opencode-ai/core/lsp"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { Effect, Layer } from "effect"
+import { pathToFileURL } from "url"
 import { AppNodeBuilderV1 } from "@/effect/app-node-builder-v1"
 import type { Diagnostic } from "@/lsp/client"
 import { LSP } from "@/lsp/lsp"
@@ -25,9 +26,17 @@ const provided: string[] = []
  * `FSUtil.normalizePath` realpaths, so the mock keys are already-normalized paths and the host must
  * compare the normalized path rather than the caller's spelling.
  */
+const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }
+
 const lsp = Layer.mock(LSP.Service, {
   touchFile: (path) => Effect.sync(() => touched.push(path)),
   diagnostics: () => Effect.sync(() => reported),
+  hasClients: () => Effect.succeed(true),
+  definition: (input: { file: string; line: number; character: number }) =>
+    Effect.succeed([{ uri: pathToFileURL(input.file).href, line: input.line, character: input.character }]),
+  documentSymbol: (uri: string) => Effect.succeed([{ name: uri, kind: 12, range, selectionRange: range }]),
+  workspaceSymbol: (query: string) =>
+    Effect.succeed([{ name: query, kind: 12, location: { uri: "file:///project/file.ts", range } }]),
 })
 
 const instances = Layer.mock(InstanceStore.Service, {
@@ -90,6 +99,26 @@ describe("LspCapability", () => {
 
       expect(report.file).toBe("")
       expect(report.project).toEqual([])
+    }),
+  )
+
+  it.effect("routes navigation through the v1 service inside the requested directory", () =>
+    Effect.gen(function* () {
+      reset()
+      const file = "/project/file.ts"
+      const host = yield* LspV2.Host
+
+      expect(yield* host.hasClients(directory, file)).toBe(true)
+      expect(yield* host.definition(directory, { file, line: 2, character: 3 })).toEqual([
+        { uri: pathToFileURL(file).href, line: 2, character: 3 },
+      ])
+      expect(yield* host.documentSymbol(directory, file)).toEqual([
+        { name: pathToFileURL(file).href, kind: 12, range, selectionRange: range },
+      ])
+      expect(yield* host.workspaceSymbol(directory, "clip")).toEqual([
+        { name: "clip", kind: 12, location: { uri: "file:///project/file.ts", range } },
+      ])
+      expect(provided).toEqual(["/project", "/project", "/project", "/project"])
     }),
   )
 })
