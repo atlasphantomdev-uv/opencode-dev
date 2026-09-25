@@ -70,6 +70,19 @@ export const renderDirectory = (entries: ReadonlyArray<FileSystem.Entry>) =>
     .map(normalizeEntry)
     .join("\n")
 
+/**
+ * `ReadToolFileSystem.list` is a bounded snapshot, so the listing must not appear complete when it
+ * is not. An empty directory still renders a non-empty status line, and a truncated page states how
+ * many entries were shown and where the next page starts. No page is fetched here.
+ */
+export const renderListing = (page: ReadToolFileSystem.ListPage) => {
+  const listing = renderDirectory(page.entries)
+  if (page.entries.length === 0) return "(0 entries)"
+  if (!page.truncated) return listing
+  const next = page.next === undefined ? "" : ` from offset ${page.next}`
+  return `${listing}\n(showing ${page.entries.length} entries; more available${next})`
+}
+
 const staticFile = (file: PromptInput.FileAttachment) => {
   const dataMime = file.uri.match(/^data:([^;,]+)[;,]/i)?.[1]
   return FileAttachment.make({
@@ -155,7 +168,7 @@ export const materialize = (input: PromptInput.Prompt) =>
           const page = yield* reader.list(absolute).pipe(Effect.catch(() => Effect.succeed(undefined)))
           if (page === undefined) return omission(file, "directory could not be read")
           const listing: Materialized = {
-            uri: textDataUrl(renderDirectory(page.entries)),
+            uri: textDataUrl(renderListing(page)),
             mime: DIRECTORY_MIME,
             name: file.name ?? basename(target.canonical),
           }

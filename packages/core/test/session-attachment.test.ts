@@ -85,6 +85,96 @@ describe("SessionAttachment.materialize", () => {
     }),
   )
 
+  test("renders a bounded listing without a status line when it is complete", () => {
+    const entry = (value: string) => FileSystem.Entry.make({ path: RelativePath.make(value), type: "file" as const })
+    const entries = Array.from({ length: ReadToolFileSystem.MAX_READ_LINES }, (_, index) =>
+      entry(`f${String(index).padStart(4, "0")}.txt`),
+    )
+    const listing = SessionAttachment.renderListing(new ReadToolFileSystem.ListPage({ entries, truncated: false }))
+    expect(listing.includes("more available")).toBe(false)
+    expect(listing.split("\n").length).toBe(ReadToolFileSystem.MAX_READ_LINES)
+  })
+
+  test("renders a truncated listing with the shown count and next offset", () => {
+    const entry = (value: string) => FileSystem.Entry.make({ path: RelativePath.make(value), type: "file" as const })
+    const page = new ReadToolFileSystem.ListPage({
+      entries: [entry("a.txt"), entry("b.txt")],
+      truncated: true,
+      next: 3,
+    })
+    expect(SessionAttachment.renderListing(page)).toBe(
+      "a.txt\nb.txt\n(showing 2 entries; more available from offset 3)",
+    )
+  })
+
+  test("renders a truncated listing without an offset when the page omits it", () => {
+    const entry = (value: string) => FileSystem.Entry.make({ path: RelativePath.make(value), type: "file" as const })
+    const page = new ReadToolFileSystem.ListPage({ entries: [entry("a.txt")], truncated: true })
+    expect(SessionAttachment.renderListing(page)).toBe("a.txt\n(showing 1 entries; more available)")
+  })
+
+  test("keeps the text attachment bound aligned with the read bound", () => {
+    expect(SessionAttachment.MAX_TEXT_ATTACHMENT_BYTES).toBe(ReadToolFileSystem.MAX_READ_BYTES)
+  })
+
+  it.effect("materializes an empty directory as a non-empty listing", () =>
+    Effect.gen(function* () {
+      const { directory } = yield* fixture
+      const prompt = yield* SessionAttachment.materialize({ text: "list", files: [{ uri: directory }] })
+      const attachment = prompt.files?.[0]
+      expect(attachment?.mime).toBe("application/x-directory")
+      expect(decode(attachment?.uri ?? "")).toBe("(0 entries)")
+      const messages = toLLMMessages(
+        [
+          SessionMessage.User.make({
+            id: SessionMessage.ID.make("msg_empty_dir"),
+            type: "user",
+            text: "prompt",
+            files: prompt.files,
+            time: { created: DateTime.makeUnsafe(0) },
+          }),
+        ],
+        model,
+      )
+      expect(messages[0]?.content).toEqual([
+        { type: "text", text: "prompt" },
+        { type: "text", text: "(0 entries)" },
+      ])
+    }),
+  )
+
+  it.effect("annotates a listing that exceeds the bounded page", () =>
+    Effect.gen(function* () {
+      const { directory, fs } = yield* fixture
+      const total = ReadToolFileSystem.MAX_READ_LINES + 1
+      yield* Effect.forEach(
+        Array.from({ length: total }, (_, index) => path.join(directory, `f${String(index).padStart(4, "0")}.txt`)),
+        (file) => fs.writeWithDirs(file, "x"),
+        { concurrency: "unbounded" },
+      )
+      const prompt = yield* SessionAttachment.materialize({ text: "list", files: [{ uri: directory }] })
+      const lines = decode(prompt.files?.[0]?.uri ?? "").split("\n")
+      expect(lines.length).toBe(ReadToolFileSystem.MAX_READ_LINES + 1)
+      expect(lines.at(-1)).toBe(
+        `(showing ${ReadToolFileSystem.MAX_READ_LINES} entries; more available from offset ${total})`,
+      )
+    }),
+  )
+
+  it.effect("materializes text at exactly the read bound", () =>
+    Effect.gen(function* () {
+      const { directory, fs } = yield* fixture
+      const file = path.join(directory, "exact.txt")
+      yield* fs.writeWithDirs(file, "a".repeat(ReadToolFileSystem.MAX_READ_BYTES))
+      const prompt = yield* SessionAttachment.materialize({
+        text: "read",
+        files: [{ uri: file, name: "exact.txt" }],
+      })
+      expect(prompt.files?.[0]?.mime).toBe("text/plain")
+      expect(decode(prompt.files?.[0]?.uri ?? "").length).toBe(ReadToolFileSystem.MAX_READ_BYTES)
+    }),
+  )
+
   test("renders directory entries directory-first then by code unit", () => {
     const entry = (value: string, type: "file" | "directory") =>
       FileSystem.Entry.make({ path: RelativePath.make(value), type })
