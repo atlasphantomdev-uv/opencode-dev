@@ -59,15 +59,33 @@ export function migrate(info: typeof ConfigV1.Info.Type) {
       buffer: info.compaction.reserved,
     },
     skills: info.skills && [...(info.skills.paths ?? []), ...(info.skills.urls ?? [])],
-    commands: info.command,
     instructions: info.instructions,
     references: info.references ?? info.reference,
     plugins: info.plugin?.map((plugin) =>
       typeof plugin === "string" ? plugin : { package: plugin[0], options: plugin[1] },
     ),
-    experimental: info.experimental?.policies && { policies: info.experimental.policies },
+    experimental: experimental(info),
     providers: providers(info.provider),
   }
+}
+
+// Migrates the legacy `disabled_providers`/`enabled_providers` flags into
+// `provider.use` policy statements. `Policy.evaluate` uses the last matching
+// statement, so ordering is significant: any authored `experimental.policies`
+// come first, then the `disabled_providers` section, then the
+// `enabled_providers` section (the spec-listed order). The enabled section
+// emits a broad `deny "*"` followed by a per-id `allow`, so explicitly enabled
+// providers override the broad deny.
+function experimental(info: typeof ConfigV1.Info.Type) {
+  const policies = [...(info.experimental?.policies ?? [])]
+  for (const resource of info.disabled_providers ?? [])
+    policies.push({ effect: "deny" as const, action: "provider.use" as const, resource })
+  if (info.enabled_providers?.length) {
+    policies.push({ effect: "deny" as const, action: "provider.use" as const, resource: "*" })
+    for (const resource of info.enabled_providers)
+      policies.push({ effect: "allow" as const, action: "provider.use" as const, resource })
+  }
+  return policies.length ? { policies } : undefined
 }
 
 function permissions(info?: ConfigPermissionV1.Info, tools?: Readonly<Record<string, boolean>>) {

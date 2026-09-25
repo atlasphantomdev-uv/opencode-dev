@@ -9,7 +9,6 @@ import { Catalog } from "../catalog"
 import { CommandV2 } from "../command"
 import { Config } from "../config"
 import { ConfigAgentPlugin } from "../config/plugin/agent"
-import { ConfigCommandPlugin } from "../config/plugin/command"
 import { ConfigExternalPlugin } from "../config/plugin/external"
 import { ConfigProviderPlugin } from "../config/plugin/provider"
 import { ConfigReferencePlugin } from "../config/plugin/reference"
@@ -115,7 +114,6 @@ const layer = Layer.effectDiscard(
         yield* add(ModelsDevPlugin)
         yield* add(EnvPlugin.Plugin)
         yield* add(ConfigAgentPlugin.Plugin)
-        yield* add(ConfigCommandPlugin.Plugin)
         yield* add(ConfigSkillPlugin.Plugin)
         for (const item of ProviderPlugins) yield* add(item)
         yield* add(ConfigExternalPlugin.Plugin)

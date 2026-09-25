@@ -115,31 +115,52 @@ describe("Config", () => {
     }),
   )
 
-  it.effect("migrates v1 command configuration", () =>
+  it.effect("migrates v1 disabled_providers into deny provider.use policies", () =>
     Effect.sync(() => {
       expect(
         ConfigMigrateV1.migrate({
-          command: {
-            review: {
-              template: "Review changes",
-              description: "Review code",
-              agent: "reviewer",
-              model: "anthropic/claude",
-              variant: "high",
-              subtask: true,
-            },
-          },
-        }).commands,
-      ).toEqual({
-        review: {
-          template: "Review changes",
-          description: "Review code",
-          agent: "reviewer",
-          model: "anthropic/claude",
-          variant: "high",
-          subtask: true,
-        },
-      })
+          disabled_providers: ["openai", "google"],
+        }).experimental?.policies,
+      ).toEqual([
+        { effect: "deny", action: "provider.use", resource: "openai" },
+        { effect: "deny", action: "provider.use", resource: "google" },
+      ])
+    }),
+  )
+
+  it.effect("migrates v1 enabled_providers into a broad deny with per-provider allows", () =>
+    Effect.sync(() => {
+      expect(
+        ConfigMigrateV1.migrate({
+          enabled_providers: ["anthropic", "openai"],
+        }).experimental?.policies,
+      ).toEqual([
+        { effect: "deny", action: "provider.use", resource: "*" },
+        { effect: "allow", action: "provider.use", resource: "anthropic" },
+        { effect: "allow", action: "provider.use", resource: "openai" },
+      ])
+    }),
+  )
+
+  it.effect("emits disabled_providers before enabled_providers", () =>
+    Effect.sync(() => {
+      expect(
+        ConfigMigrateV1.migrate({
+          disabled_providers: ["google"],
+          enabled_providers: ["anthropic", "openai"],
+        }).experimental?.policies,
+      ).toEqual([
+        { effect: "deny", action: "provider.use", resource: "google" },
+        { effect: "deny", action: "provider.use", resource: "*" },
+        { effect: "allow", action: "provider.use", resource: "anthropic" },
+        { effect: "allow", action: "provider.use", resource: "openai" },
+      ])
+    }),
+  )
+
+  it.effect("emits no policies when no legacy provider fields are present", () =>
+    Effect.sync(() => {
+      expect(ConfigMigrateV1.migrate({}).experimental).toBeUndefined()
     }),
   )
 
