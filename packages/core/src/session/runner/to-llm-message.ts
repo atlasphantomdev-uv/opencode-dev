@@ -18,6 +18,40 @@ const media = (file: FileAttachment): ContentPart => ({
   metadata: file.description === undefined ? undefined : { description: file.description },
 })
 
+/** Materialized text attachments are model-visible text, never provider media. */
+const textAttachment = (mime: string) => mime === "application/x-directory" || mime.startsWith("text/")
+
+const decodeTextAttachment = (uri: string) => {
+  if (!uri.startsWith("data:")) return undefined
+  const comma = uri.indexOf(",")
+  if (comma === -1) return undefined
+  const meta = uri.slice("data:".length, comma)
+  const payload = uri.slice(comma + 1)
+  if (meta.includes(";base64")) {
+    try {
+      return Buffer.from(payload, "base64").toString("utf8")
+    } catch {
+      return undefined
+    }
+  }
+  try {
+    return decodeURIComponent(payload)
+  } catch {
+    return payload
+  }
+}
+
+/**
+ * A resolved prompt attachment lowers to text or media. An unresolved local source must never reach
+ * provider media validation, so it degrades to deterministic text instead.
+ */
+const attachment = (file: FileAttachment): ContentPart[] => {
+  const unavailable = `[Attachment unavailable: ${file.name ?? file.mime}]`
+  if (textAttachment(file.mime)) return [{ type: "text", text: decodeTextAttachment(file.uri) ?? unavailable }]
+  if (!file.uri.startsWith("data:")) return [{ type: "text", text: unavailable }]
+  return [media(file)]
+}
+
 const toolInput = (tool: SessionMessage.AssistantTool) => {
   if (tool.state.status !== "pending") return tool.state.input
   try {
@@ -122,7 +156,7 @@ function toLLMMessage(message: SessionMessage.Message, model: Model): Message[] 
         Message.make({
           id: message.id,
           role: "user",
-          content: [{ type: "text", text: message.text }, ...(message.files ?? []).map(media)],
+          content: [{ type: "text", text: message.text }, ...(message.files ?? []).flatMap(attachment)],
           metadata: {
             ...message.metadata,
             ...(message.agents?.length ? { agents: message.agents } : {}),

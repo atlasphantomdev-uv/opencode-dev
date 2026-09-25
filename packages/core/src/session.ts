@@ -36,6 +36,7 @@ import { Snapshot } from "./snapshot"
 import { SessionRevert } from "./session/revert"
 import { Revert } from "@opencode-ai/schema/revert"
 import { FSUtil } from "./fs-util"
+import { SessionAttachment } from "./session/attachment"
 import { SessionDurable } from "@opencode-ai/schema/durable-event-manifest"
 import { MoveSession } from "./control-plane/move-session"
 
@@ -193,6 +194,7 @@ const layer = Layer.effect(
     const execution = yield* SessionExecution.Service
     const store = yield* SessionStore.Service
     const locations = yield* LocationServiceMap.Service
+    const fsUtil = yield* FSUtil.Service
     const moveSession = yield* MoveSession.Service
     const decodeMessage = Schema.decodeUnknownEffect(SessionMessage.Message)
     const isDurableSessionEvent = Schema.is(SessionEvent.Durable)
@@ -363,8 +365,13 @@ const layer = Layer.effect(
       prompt: Effect.fn("V2Session.prompt")((input) =>
         Effect.uninterruptible(
           Effect.gen(function* () {
-            yield* result.get(input.sessionID)
-            const prompt = resolvePrompt(input.prompt)
+            const session = yield* result.get(input.sessionID)
+            const prompt = SessionAttachment.needsFileSystem(input.prompt)
+              ? yield* SessionAttachment.materialize(input.prompt).pipe(
+                  Effect.provide(locations.get(session.location)),
+                  Effect.provideService(FSUtil.Service, fsUtil),
+                )
+              : SessionAttachment.resolveStatic(input.prompt)
             const messageID = input.id ?? SessionMessage.ID.create()
             const delivery = input.delivery ?? "steer"
             const expected = { sessionID: input.sessionID, messageID, prompt, delivery }
@@ -463,20 +470,6 @@ const layer = Layer.effect(
   }),
 )
 
-const resolvePrompt = (input: PromptInput.Prompt) =>
-  Prompt.make({
-    text: input.text,
-    agents: input.agents,
-    files: input.files?.map((file) => {
-      const dataMime = file.uri.match(/^data:([^;,]+)[;,]/i)?.[1]
-      const target = URL.canParse(file.uri) ? new URL(file.uri).pathname : (file.name ?? file.uri)
-      return {
-        ...file,
-        mime: dataMime ?? (target.endsWith("/") ? "application/x-directory" : FSUtil.mimeType(target)),
-      }
-    }),
-  })
-
 export const node = makeGlobalNode({
   service: Service,
   layer: layer.pipe(Layer.orDie),
@@ -489,5 +482,6 @@ export const node = makeGlobalNode({
     LocationServiceMap.node,
     SessionProjector.node,
     MoveSession.node,
+    FSUtil.node,
   ],
 })
