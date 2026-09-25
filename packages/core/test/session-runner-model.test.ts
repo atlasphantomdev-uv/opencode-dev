@@ -372,6 +372,53 @@ describe("SessionRunnerModel", () => {
     }),
   )
 
+  it.effect("maps catalog xAI AI SDK models into native Responses routes", () =>
+    Effect.gen(function* () {
+      const resolved = yield* SessionRunnerModel.fromCatalogModel(
+        model({ type: "aisdk", package: "@ai-sdk/xai", url: "https://xai.example/v1" }),
+      )
+
+      expect(resolved).toMatchObject({ id: "api-test-model", provider: "test-provider" })
+      expect(resolved.route).toMatchObject({
+        id: "openai-responses",
+        endpoint: { baseURL: "https://xai.example/v1" },
+      })
+      const headers = yield* resolved.route.auth.apply({
+        request: LLM.request({ model: resolved, prompt: "Hello" }),
+        method: "POST",
+        url: "https://xai.example/v1/responses",
+        body: "{}",
+        headers: Headers.empty,
+      })
+      expect(headers.authorization).toBe("Bearer secret")
+    }),
+  )
+
+  it.effect("maps catalog OpenAI-compatible family AI SDK models into native routes", () =>
+    Effect.gen(function* () {
+      for (const [pkg, baseURL] of [
+        ["@ai-sdk/cerebras", "https://cerebras.example/v1"],
+        ["@ai-sdk/deepinfra", "https://deepinfra.example/v1"],
+        ["@ai-sdk/groq", "https://groq.example/v1"],
+        ["@ai-sdk/togetherai", "https://togetherai.example/v1"],
+      ] as const) {
+        const resolved = yield* SessionRunnerModel.fromCatalogModel(
+          model({ type: "aisdk", package: pkg, url: baseURL }),
+        )
+
+        expect(resolved.route).toMatchObject({ id: "openai-compatible-chat", endpoint: { baseURL } })
+        const headers = yield* resolved.route.auth.apply({
+          request: LLM.request({ model: resolved, prompt: "Hello" }),
+          method: "POST",
+          url: `${baseURL}/chat/completions`,
+          body: "{}",
+          headers: Headers.empty,
+        })
+        expect(headers.authorization).toBe("Bearer secret")
+      }
+    }),
+  )
+
   it.effect("reports whether a catalog model has a supported native route", () =>
     Effect.sync(() => {
       expect(
@@ -383,6 +430,9 @@ describe("SessionRunnerModel", () => {
         SessionRunnerModel.supported(
           model({ type: "aisdk", package: "@ai-sdk/google", url: "https://google.example/v1" }),
         ),
+      ).toBe(true)
+      expect(
+        SessionRunnerModel.supported(model({ type: "aisdk", package: "@ai-sdk/xai", url: "https://xai.example/v1" })),
       ).toBe(true)
       expect(
         SessionRunnerModel.supported(

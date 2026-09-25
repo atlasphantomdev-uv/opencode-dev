@@ -141,7 +141,12 @@ const nativeRoutes: Readonly<
   "@ai-sdk/openai": { route: OpenAIResponses.route, auth: bearer },
   "@ai-sdk/anthropic": { route: AnthropicMessages.route, auth: header("x-api-key") },
   "@ai-sdk/google": { route: Gemini.route, auth: header("x-goog-api-key") },
+  "@ai-sdk/xai": { route: OpenAIResponses.route, auth: bearer },
   "@openrouter/ai-sdk-provider": { route: OpenRouter.route, auth: bearer },
+  "@ai-sdk/cerebras": { route: OpenAICompatibleChat.route, auth: bearer },
+  "@ai-sdk/deepinfra": { route: OpenAICompatibleChat.route, auth: bearer },
+  "@ai-sdk/groq": { route: OpenAICompatibleChat.route, auth: bearer },
+  "@ai-sdk/togetherai": { route: OpenAICompatibleChat.route, auth: bearer },
 }
 
 export const fromCatalogModel = (
