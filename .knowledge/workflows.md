@@ -3,8 +3,8 @@ type: "knowledge"
 name: "workflows"
 source_paths: ["AGENTS.md",".github/workflows",".husky","script","specs/v2","packages/client/script","packages/sdk/js/script","packages/opencode/src/index.ts","packages/app/src/entry.tsx","packages/desktop/src/main/index.ts"]
 related: ["architecture","configuration"]
-last_verified_commit: "eef36e3bfba5342598a380ad5af045ecfac2389a"
-source_digest: "3e48f6927f5cbe81ded5323edf56069ab7a415c7f657bc258fdfe8925a53987a"
+last_verified_commit: "5fa9d5cc9c896ebf25f1652754c3c0a6e1216bde"
+source_digest: "09b83e1d62b67e8d23d846352e0b870c67165ed4a96cb07e2f423c94cdcd019a"
 ---
 
 # workflows
