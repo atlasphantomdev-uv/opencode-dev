@@ -36,9 +36,6 @@ export class Info extends Schema.Class<Info>("Config.Info")({
   model: Schema.String.pipe(Schema.optional).annotate({
     description: "Default model to use when no session or agent model is selected",
   }),
-  default_agent: Schema.String.pipe(Schema.optional).annotate({
-    description: "Default primary agent to use when no session agent is selected",
-  }),
   autoupdate: Schema.Union([Schema.Boolean, Schema.Literal("notify")])
     .pipe(Schema.optional)
     .annotate({

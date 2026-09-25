@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-sdk-next"
 source_paths: ["packages/sdk-next"]
 related: ["module-packages-client","module-packages-core","module-packages-server"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "83d3c46939f05441166e499832ff569e41c4d8faadbc5a8bad5076c1021fb4ad"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "b85bc629fe64796a38ebd3fb5919424a83e3c16bb67430c7808d0180de099d67"
 ---
 
 # packages/sdk-next

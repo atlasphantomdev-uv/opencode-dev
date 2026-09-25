@@ -4,10 +4,9 @@ import type { Plugin as EffectPlugin } from "@opencode-ai/plugin/v2/effect"
 import type { Plugin as PromisePlugin } from "@opencode-ai/plugin/v2/promise"
 import { Effect, Schema } from "effect"
 import path from "path"
-import { fileURLToPath, pathToFileURL } from "url"
+import { pathToFileURL } from "url"
 import { Config } from "../../config"
 import { FSUtil } from "../../fs-util"
-import { Location } from "../../location"
 import { Npm } from "../../npm"
 import { define } from "../../plugin/internal"
 import { PluginPromise } from "../../plugin/promise"
@@ -34,24 +33,16 @@ export const Plugin = define({
   effect: Effect.fn(function* (ctx) {
     const config = yield* Config.Service
     const fs = yield* FSUtil.Service
-    const location = yield* Location.Service
     const npm = yield* Npm.Service
     yield* Effect.gen(function* () {
       const configured: { package: string; options?: Record<string, any> }[] = []
 
       for (const entry of yield* config.entries()) {
         if (entry.type === "document") {
-          const directory = entry.path ? path.dirname(entry.path) : location.directory
           for (const item of entry.info.plugins ?? []) {
             const ref = typeof item === "string" ? { package: item } : item
-            const packageName = (() => {
-              if (ref.package.startsWith("file://")) return fileURLToPath(ref.package)
-              if (ref.package.startsWith("./") || ref.package.startsWith("../")) {
-                return path.resolve(directory, ref.package)
-              }
-              return ref.package
-            })()
-            configured.push({ package: packageName, options: ref.options })
+            if (isLocalReference(ref.package)) continue
+            configured.push({ package: ref.package, options: ref.options })
           }
         }
 
@@ -89,3 +80,8 @@ export const Plugin = define({
     }).pipe(Effect.forkScoped({ startImmediately: true }))
   }),
 })
+
+// v2 only loads configured package plugins; local paths and file URLs are discovered from plugin directories.
+function isLocalReference(value: string) {
+  return value.startsWith("file:") || value.startsWith("./") || value.startsWith("../") || path.isAbsolute(value)
+}

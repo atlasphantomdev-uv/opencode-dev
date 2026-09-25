@@ -57,11 +57,6 @@ export const UpdatePayload = Schema.Struct({
   ),
 })
 export const ForkPayload = Schema.Struct(Struct.omit(Session.ForkInput.fields, ["sessionID"]))
-export const InitPayload = Schema.Struct({
-  modelID: ModelV2.ID,
-  providerID: ProviderV2.ID,
-  messageID: MessageID,
-})
 export const SummarizePayload = Schema.Struct({
   providerID: ProviderV2.ID,
   modelID: ModelV2.ID,
@@ -90,7 +85,6 @@ export const SessionPaths = {
   fork: `${root}/:sessionID/fork`,
   abort: `${root}/:sessionID/abort`,
   share: `${root}/:sessionID/share`,
-  init: `${root}/:sessionID/init`,
   summarize: `${root}/:sessionID/summarize`,
   prompt: `${root}/:sessionID/message`,
   promptAsync: `${root}/:sessionID/prompt_async`,
@@ -260,20 +254,6 @@ export const SessionApi = HttpApi.make("session")
             identifier: "session.abort",
             summary: "Abort session",
             description: "Abort an active session and stop any ongoing AI processing or command execution.",
-          }),
-        ),
-        HttpApiEndpoint.post("init", SessionPaths.init, {
-          params: { sessionID: SessionID },
-          query: WorkspaceRoutingQuery,
-          payload: InitPayload,
-          success: described(Schema.Boolean, "200"),
-          error: [HttpApiError.BadRequest, ApiNotFoundError],
-        }).annotateMerge(
-          OpenApi.annotations({
-            identifier: "session.init",
-            summary: "Initialize session",
-            description:
-              "Analyze the current application and create an AGENTS.md file with project-specific agent configurations.",
           }),
         ),
         HttpApiEndpoint.post("share", SessionPaths.share, {

@@ -132,10 +132,6 @@ export const ModelsDevPlugin = define({
             integrationID,
             method: { type: "key" },
           })
-          integrations.method.update({
-            integrationID,
-            method: { type: "env", names: [...item.env] },
-          })
         }
       }),
     )

@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-protocol"
 source_paths: ["packages/protocol"]
 related: ["module-packages-schema"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "3eef62f5c8a2fe618ae85d8cba8a27bf9dd4fabb19fa9e624972283db43a8e99"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "5cadea456d3a54cb38589c0f5700eb840b5983633b52927e55889a5b4ee9107d"
 ---
 
 # packages/protocol

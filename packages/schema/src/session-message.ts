@@ -98,7 +98,6 @@ export const ToolStateCompleted = Schema.Struct({
   input: Schema.Record(Schema.String, Schema.Unknown),
   attachments: FileAttachment.pipe(Schema.Array, optional),
   content: ToolContent.pipe(Schema.Array),
-  outputPaths: Schema.Array(Schema.String).pipe(optional),
   structured: Schema.Record(Schema.String, Schema.Unknown),
   result: Schema.Unknown.pipe(optional),
 }).annotate({ identifier: "Session.Message.ToolState.Completed" })

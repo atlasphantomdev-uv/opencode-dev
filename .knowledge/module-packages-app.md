@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-app"
 source_paths: ["packages/app"]
 related: ["module-packages-client","module-packages-core","module-packages-schema","module-packages-sdk-js","module-packages-session-ui","module-packages-ui"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "740b7b4ff462a557193f4ea86daefd459b0f619535883a7f80e55933572adb91"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "d5d091e8397449ae4a6f9c28eb83c62c3b3b121e868f49d3a0864f274cbf6261"
 ---
 
 # packages/app

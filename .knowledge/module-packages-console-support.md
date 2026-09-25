@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-console-support"
 source_paths: ["packages/console/support"]
 related: ["module-packages-console-core"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "b129ebffe13931e00bbefb75c538c9e6602202a1633b114d6fd5ec7059eec0a0"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "007d572038d7245521f5a75b2e344b4bb621e7250f67d0d3806821190d150720"
 ---
 
 # packages/console/support

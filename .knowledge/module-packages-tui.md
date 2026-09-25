@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-tui"
 source_paths: ["packages/tui"]
 related: ["module-packages-core","module-packages-plugin","module-packages-sdk-js","module-packages-ui"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "4bd5a80931df2336c2723fc20e9a8791cec32338ccdbb1551cde7c79e9bb2886"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "0a516b3f57c1a2c32d079c976eab10455f890ac1fe8dda8053d21c7f76ba5b2d"
 ---
 
 # packages/tui

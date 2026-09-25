@@ -2,7 +2,6 @@ import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { Agent } from "@/agent/agent"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 import { EventV2Bridge } from "@/event-v2-bridge"
-import { Command } from "@/command"
 import { Permission } from "@/permission"
 import { SessionShare } from "@/share/session"
 import { Session } from "@/session/session"
@@ -26,7 +25,6 @@ import {
   CommandPayload,
   DiffQuery,
   ForkPayload,
-  InitPayload,
   ListQuery,
   MessagesQuery,
   PermissionResponsePayload,
@@ -234,23 +232,6 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       return true
     })
 
-    const init = Effect.fn("SessionHttpApi.init")(function* (ctx: {
-      params: { sessionID: SessionID }
-      payload: typeof InitPayload.Type
-    }) {
-      yield* requireSession(ctx.params.sessionID)
-      yield* promptSvc
-        .command({
-          sessionID: ctx.params.sessionID,
-          messageID: ctx.payload.messageID,
-          model: `${ctx.payload.providerID}/${ctx.payload.modelID}`,
-          command: Command.Default.INIT,
-          arguments: "",
-        })
-        .pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
-      return true
-    })
-
     // share/unshare errors aren't all client-induced — storage and network
     // failures from SessionShare are real possibilities. Map to a typed 500
     // (matches the legacy route behavior which routed any failure through
@@ -424,7 +405,6 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       .handle("update", update)
       .handleRaw("fork", forkRaw)
       .handle("abort", abort)
-      .handle("init", init)
       .handle("share", share)
       .handle("unshare", unshare)
       .handle("summarize", summarize)

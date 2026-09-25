@@ -29,6 +29,7 @@ import { State } from "../state"
 import { FetchHttpClient, HttpClient } from "effect/unstable/http"
 import { AgentPlugin } from "./agent"
 import { CommandPlugin } from "./command"
+import { EnvPlugin } from "./env"
 import { ModelsDevPlugin } from "./models-dev"
 import { ProviderPlugins } from "./provider"
 import { SkillPlugin } from "./skill"
@@ -112,6 +113,7 @@ const layer = Layer.effectDiscard(
         yield* add(CommandPlugin.Plugin)
         yield* add(SkillPlugin.Plugin)
         yield* add(ModelsDevPlugin)
+        yield* add(EnvPlugin.Plugin)
         yield* add(ConfigAgentPlugin.Plugin)
         yield* add(ConfigCommandPlugin.Plugin)
         yield* add(ConfigSkillPlugin.Plugin)

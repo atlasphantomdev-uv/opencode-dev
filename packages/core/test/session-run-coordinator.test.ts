@@ -54,6 +54,49 @@ describe("SessionRunCoordinator", () => {
     ),
   )
 
+  it.effect("awaits active execution without starting another", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const started = yield* Deferred.make<void>()
+        const gate = yield* Deferred.make<void>()
+        let runs = 0
+        const coordinator = yield* SessionRunCoordinator.make({
+          drain: () =>
+            Effect.sync(() => runs++).pipe(
+              Effect.andThen(Deferred.succeed(started, undefined)),
+              Effect.andThen(Deferred.await(gate)),
+            ),
+        })
+
+        const run = yield* coordinator.run("session").pipe(Effect.forkChild)
+        yield* Deferred.await(started)
+        const waiter = yield* coordinator.await("session").pipe(Effect.forkChild)
+        yield* Effect.yieldNow
+
+        expect(runs).toBe(1)
+        expect(Array.from(yield* coordinator.active)).toEqual(["session"])
+        yield* Deferred.succeed(gate, undefined)
+        yield* Effect.all([Fiber.join(run), Fiber.join(waiter)])
+        expect(runs).toBe(1)
+        expect(Array.from(yield* coordinator.active)).toEqual([])
+      }),
+    ),
+  )
+
+  it.effect("resolves immediately when idle without starting execution", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        let runs = 0
+        const coordinator = yield* SessionRunCoordinator.make({ drain: () => Effect.sync(() => runs++) })
+
+        yield* coordinator.await("session")
+
+        expect(runs).toBe(0)
+        expect(Array.from(yield* coordinator.active)).toEqual([])
+      }),
+    ),
+  )
+
   it.effect("starts execution when woken while idle", () =>
     Effect.scoped(
       Effect.gen(function* () {

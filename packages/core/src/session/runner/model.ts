@@ -3,9 +3,11 @@ export * as SessionRunnerModel from "./model"
 import { makeLocationNode } from "../../effect/app-node"
 import { type Model } from "@opencode-ai/llm"
 import * as AnthropicMessages from "@opencode-ai/llm/protocols/anthropic-messages"
+import * as Gemini from "@opencode-ai/llm/protocols/gemini"
 import * as OpenAICompatibleChat from "@opencode-ai/llm/protocols/openai-compatible-chat"
 import * as OpenAIResponses from "@opencode-ai/llm/protocols/openai-responses"
-import { Auth, type AnyRoute } from "@opencode-ai/llm/route"
+import * as OpenRouter from "@opencode-ai/llm/providers/openrouter"
+import { Auth, type AnyRoute, type AuthShape, type Credential as RouteCredential } from "@opencode-ai/llm/route"
 import { Context, Effect, Layer, Schema } from "effect"
 import { produce } from "immer"
 import { Catalog } from "../../catalog"
@@ -128,6 +130,20 @@ const withVariant = (
 const apiName = (model: ModelV2.Info) =>
   model.api.type === "aisdk" ? `${model.api.type}:${model.api.package}` : model.api.type
 
+const bearer = (key: RouteCredential | undefined) => (key === undefined ? Auth.none : Auth.bearer(key))
+const header = (name: string) => (key: RouteCredential | undefined) =>
+  key === undefined ? Auth.none : Auth.header(name, key)
+
+/** AI SDK packages that resolve to an existing native route without extra transport setup. */
+const nativeRoutes: Readonly<
+  Record<string, { readonly route: AnyRoute; readonly auth: (key: RouteCredential | undefined) => AuthShape }>
+> = {
+  "@ai-sdk/openai": { route: OpenAIResponses.route, auth: bearer },
+  "@ai-sdk/anthropic": { route: AnthropicMessages.route, auth: header("x-api-key") },
+  "@ai-sdk/google": { route: Gemini.route, auth: header("x-goog-api-key") },
+  "@openrouter/ai-sdk-provider": { route: OpenRouter.route, auth: bearer },
+}
+
 export const fromCatalogModel = (
   model: ModelV2.Info,
   credential?: Credential.Value,
@@ -139,24 +155,18 @@ export const fromCatalogModel = (
           Object.assign(draft.request.body, credential.metadata)
         })
   const key = apiKey(resolved, credential)
-  if (resolved.api.type === "aisdk" && resolved.api.package === "@ai-sdk/openai") {
+  const route = resolved.api.type === "aisdk" ? nativeRoutes[resolved.api.package] : undefined
+  if (route !== undefined) {
     return Effect.succeed(
-      withDefaults(resolved, OpenAIResponses.route)
-        .with({ auth: key === undefined ? Auth.none : Auth.bearer(key) })
-        .model({ id: resolved.api.id }),
-    )
-  }
-  if (resolved.api.type === "aisdk" && resolved.api.package === "@ai-sdk/anthropic") {
-    return Effect.succeed(
-      withDefaults(resolved, AnthropicMessages.route)
-        .with({ auth: key === undefined ? Auth.none : Auth.header("x-api-key", key) })
+      withDefaults(resolved, route.route)
+        .with({ auth: route.auth(key) })
         .model({ id: resolved.api.id }),
     )
   }
   if (resolved.api.type === "aisdk" && resolved.api.package === "@ai-sdk/openai-compatible" && resolved.api.url) {
     return Effect.succeed(
       withDefaults(resolved, OpenAICompatibleChat.route)
-        .with({ auth: key === undefined ? Auth.none : Auth.bearer(key) })
+        .with({ auth: bearer(key) })
         .model({ id: resolved.api.id }),
     )
   }
@@ -174,8 +184,7 @@ export const resolve = (session: SessionSchema.Info, model: ModelV2.Info, creden
 
 export const supported = (model: ModelV2.Info) =>
   model.api.type === "aisdk" &&
-  (model.api.package === "@ai-sdk/openai" ||
-    model.api.package === "@ai-sdk/anthropic" ||
+  (Object.hasOwn(nativeRoutes, model.api.package) ||
     (model.api.package === "@ai-sdk/openai-compatible" && model.api.url !== undefined))
 
 /** Resolves models from the catalog belonging to the current Location runtime. */

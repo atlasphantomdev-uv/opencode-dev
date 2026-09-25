@@ -37,6 +37,7 @@ import { SessionRevert } from "./session/revert"
 import { Revert } from "@opencode-ai/schema/revert"
 import { FSUtil } from "./fs-util"
 import { SessionDurable } from "@opencode-ai/schema/durable-event-manifest"
+import { MoveSession } from "./control-plane/move-session"
 
 export const RevertState = Revert.State
 export type RevertState = Revert.State
@@ -95,7 +96,7 @@ export class NotFoundError extends Schema.TaggedErrorClass<NotFoundError>()("Ses
 export class OperationUnavailableError extends Schema.TaggedErrorClass<OperationUnavailableError>()(
   "Session.OperationUnavailableError",
   {
-    operation: Schema.Literals(["move", "shell", "skill", "switchAgent", "compact", "wait"]),
+    operation: Schema.Literals(["shell", "skill", "compact"]),
   },
 ) {}
 
@@ -164,7 +165,8 @@ export interface Interface {
     resume?: boolean
   }) => Effect.Effect<void, OperationUnavailableError>
   readonly compact: (input: CompactInput) => Effect.Effect<void, NotFoundError | OperationUnavailableError>
-  readonly wait: (id: SessionSchema.ID) => Effect.Effect<void, NotFoundError | OperationUnavailableError>
+  readonly move: (input: MoveSession.Input) => Effect.Effect<void, MoveSession.Error>
+  readonly wait: (id: SessionSchema.ID) => Effect.Effect<void, NotFoundError>
   readonly active: Effect.Effect<ReadonlySet<SessionSchema.ID>>
   readonly resume: (sessionID: SessionSchema.ID) => Effect.Effect<void, NotFoundError | SessionRunner.RunError>
   readonly interrupt: (sessionID: SessionSchema.ID) => Effect.Effect<void>
@@ -191,6 +193,7 @@ const layer = Layer.effect(
     const execution = yield* SessionExecution.Service
     const store = yield* SessionStore.Service
     const locations = yield* LocationServiceMap.Service
+    const moveSession = yield* MoveSession.Service
     const decodeMessage = Schema.decodeUnknownEffect(SessionMessage.Message)
     const isDurableSessionEvent = Schema.is(SessionEvent.Durable)
     const decode = (row: typeof SessionMessageTable.$inferSelect) =>
@@ -420,7 +423,10 @@ const layer = Layer.effect(
       }),
       wait: Effect.fn("V2Session.wait")(function* (sessionID) {
         yield* result.get(sessionID)
-        return yield* new OperationUnavailableError({ operation: "wait" })
+        yield* execution.await(sessionID)
+      }),
+      move: Effect.fn("V2Session.move")(function* (input) {
+        return yield* moveSession.moveSession(input)
       }),
       active: execution.active,
       resume: Effect.fn("V2Session.resume")(function* (sessionID) {
@@ -482,5 +488,6 @@ export const node = makeGlobalNode({
     SessionStore.node,
     LocationServiceMap.node,
     SessionProjector.node,
+    MoveSession.node,
   ],
 })

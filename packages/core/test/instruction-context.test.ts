@@ -1,9 +1,12 @@
 import { describe, expect } from "bun:test"
 import { Effect, Layer } from "effect"
+import { HttpClient, HttpClientResponse } from "effect/unstable/http"
 import fs from "fs/promises"
 import path from "path"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
+import { LayerNodePlatform } from "@opencode-ai/core/effect/app-node-platform"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { Config } from "@opencode-ai/core/config"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Global } from "@opencode-ai/core/global"
 import { InstructionContext } from "@opencode-ai/core/instruction-context"
@@ -21,12 +24,58 @@ const instructionLayer = (input: {
   config: string
   locationServiceLayer: Layer.Layer<Location.Service>
   filesystemLayer?: Layer.Layer<FSUtil.Service>
-}) =>
-  AppNodeBuilder.build(LayerNode.group([SystemContextRegistry.node, InstructionContext.node]), [
-    [Global.node, Global.layerWith({ config: input.config })],
+  instructions?: string[]
+  home?: string
+  httpLayer?: Layer.Layer<HttpClient.HttpClient>
+}) => {
+  const instructions = input.instructions ?? []
+  const configLayer = Layer.succeed(
+    Config.Service,
+    Config.Service.of({
+      entries: () =>
+        Effect.succeed(
+          instructions.length === 0
+            ? []
+            : [new Config.Document({ type: "document", info: new Config.Info({ instructions }) })],
+        ),
+    }),
+  )
+  return AppNodeBuilder.build(LayerNode.group([SystemContextRegistry.node, InstructionContext.node]), [
+    [Global.node, Global.layerWith({ config: input.config, ...(input.home ? { home: input.home } : {}) })],
     [Location.node, input.locationServiceLayer],
+    [Config.node, configLayer],
     ...(input.filesystemLayer ? [[FSUtil.node, input.filesystemLayer] as const] : []),
+    ...(input.httpLayer ? [[LayerNodePlatform.httpClient, input.httpLayer] as const] : []),
   ])
+}
+
+const locationAt = (directory: string, projectDirectory = directory) =>
+  Layer.succeed(
+    Location.Service,
+    Location.Service.of(
+      location({ directory: AbsolutePath.make(directory) }, { projectDirectory: AbsolutePath.make(projectDirectory) }),
+    ),
+  )
+
+const mockHttp = (respond: (url: string) => Response | undefined) =>
+  Layer.succeed(
+    HttpClient.HttpClient,
+    HttpClient.make((request) =>
+      Effect.sync(() => respond(request.url)).pipe(
+        Effect.map((response) =>
+          HttpClientResponse.fromWeb(request, response ?? new Response("Not Found", { status: 404 })),
+        ),
+      ),
+    ),
+  )
+
+const loadBaseline = (layer: Layer.Layer<SystemContextRegistry.Service>) =>
+  SystemContextRegistry.Service.pipe(
+    Effect.flatMap((service) => service.load()),
+    Effect.flatMap((context) => SystemContext.initialize(context)),
+    Effect.map((generation) => generation.baseline),
+    Effect.provide(layer),
+  )
 
 describe("InstructionContext", () => {
   it.live("loads CLAUDE.md fallback", () =>
@@ -395,5 +444,230 @@ describe("InstructionContext", () => {
 
       expect(scanned).toBe(false)
     }),
+  )
+
+  it.live("loads configured relative instruction globs upward from the session directory", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const project = path.join(tmp.path, "project")
+          const directory = path.join(project, "src")
+          const docs = path.join(project, "docs")
+          const outside = path.join(tmp.path, "docs", "outside.md")
+          const relative = path.join(docs, "relative.md")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(directory, { recursive: true })
+            await fs.mkdir(docs, { recursive: true })
+            await fs.mkdir(path.dirname(outside), { recursive: true })
+            await fs.writeFile(relative, "relative")
+            await fs.writeFile(outside, "outside")
+          })
+          const baseline = yield* loadBaseline(
+            instructionLayer({
+              config: path.join(tmp.path, "global"),
+              instructions: ["docs/*.md"],
+              locationServiceLayer: locationAt(directory, project),
+            }),
+          )
+          expect(baseline).toContain(`Instructions from: ${relative}\nrelative`)
+          expect(baseline).not.toContain("outside")
+        }),
+      ),
+    ),
+  )
+
+  it.live("expands ~ against the global home directory", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const home = path.join(tmp.path, "home")
+          const project = path.join(tmp.path, "project")
+          const file = path.join(home, "team", "rules.md")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.dirname(file), { recursive: true })
+            await fs.mkdir(project, { recursive: true })
+            await fs.writeFile(file, "home-rules")
+          })
+          const baseline = yield* loadBaseline(
+            instructionLayer({
+              config: path.join(tmp.path, "global"),
+              home,
+              instructions: ["~/team/rules.md"],
+              locationServiceLayer: locationAt(project),
+            }),
+          )
+          expect(baseline).toContain(`Instructions from: ${file}\nhome-rules`)
+        }),
+      ),
+    ),
+  )
+
+  it.live("loads an absolute configured instruction path", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const project = path.join(tmp.path, "project")
+          const file = path.join(tmp.path, "abs", "rules.md")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.dirname(file), { recursive: true })
+            await fs.mkdir(project, { recursive: true })
+            await fs.writeFile(file, "absolute")
+          })
+          const baseline = yield* loadBaseline(
+            instructionLayer({
+              config: path.join(tmp.path, "global"),
+              instructions: [file],
+              locationServiceLayer: locationAt(project),
+            }),
+          )
+          expect(baseline).toContain(`Instructions from: ${file}\nabsolute`)
+        }),
+      ),
+    ),
+  )
+
+  it.live("orders discovered, then configured local, then fetched remote instructions", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const project = path.join(tmp.path, "project")
+          const discovered = path.join(project, "AGENTS.md")
+          const configured = path.join(tmp.path, "extra.md")
+          const url = "https://example.test/rules.md"
+          yield* Effect.promise(async () => {
+            await fs.mkdir(project, { recursive: true })
+            await fs.writeFile(discovered, "discovered")
+            await fs.writeFile(configured, "local")
+          })
+          const baseline = yield* loadBaseline(
+            instructionLayer({
+              config: path.join(tmp.path, "global"),
+              instructions: [configured, url],
+              locationServiceLayer: locationAt(project),
+              httpLayer: mockHttp((requested) =>
+                requested === url ? new Response("remote", { status: 200 }) : undefined,
+              ),
+            }),
+          )
+          expect(baseline).toBe(
+            [
+              `Instructions from: ${discovered}\ndiscovered`,
+              `Instructions from: ${configured}\nlocal`,
+              `Instructions from: ${url}\nremote`,
+            ].join("\n\n"),
+          )
+        }),
+      ),
+    ),
+  )
+
+  it.live("dedupes resolved configured instruction paths", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const project = path.join(tmp.path, "project")
+          const file = path.join(tmp.path, "extra.md")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(project, { recursive: true })
+            await fs.writeFile(file, "once")
+          })
+          const baseline = yield* loadBaseline(
+            instructionLayer({
+              config: path.join(tmp.path, "global"),
+              instructions: [file, file],
+              locationServiceLayer: locationAt(project),
+            }),
+          )
+          expect(baseline.split(`Instructions from: ${file}`).length - 1).toBe(1)
+        }),
+      ),
+    ),
+  )
+
+  it.live("skips remote instructions that fail or are empty", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const project = path.join(tmp.path, "project")
+          const missing = "https://example.test/missing.md"
+          const empty = "https://example.test/empty.md"
+          const ok = "https://example.test/ok.md"
+          yield* Effect.promise(() => fs.mkdir(project, { recursive: true }))
+          const baseline = yield* loadBaseline(
+            instructionLayer({
+              config: path.join(tmp.path, "global"),
+              instructions: [missing, empty, ok],
+              locationServiceLayer: locationAt(project),
+              httpLayer: mockHttp((requested) => {
+                if (requested === missing) return new Response("Not Found", { status: 404 })
+                if (requested === empty) return new Response("", { status: 200 })
+                if (requested === ok) return new Response("ok", { status: 200 })
+                return undefined
+              }),
+            }),
+          )
+          expect(baseline).toBe(`Instructions from: ${ok}\nok`)
+          expect(baseline).not.toContain(missing)
+          expect(baseline).not.toContain(empty)
+        }),
+      ),
+    ),
+  )
+
+  it.live("resolves configured relative instructions from the global config dir when project config is disabled", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const previous = process.env.OPENCODE_DISABLE_PROJECT_CONFIG
+          process.env.OPENCODE_DISABLE_PROJECT_CONFIG = "1"
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              if (previous === undefined) delete process.env.OPENCODE_DISABLE_PROJECT_CONFIG
+              else process.env.OPENCODE_DISABLE_PROJECT_CONFIG = previous
+            }),
+          )
+          const global = path.join(tmp.path, "global")
+          const project = path.join(tmp.path, "project")
+          const globalRules = path.join(global, "rules.md")
+          const projectRules = path.join(project, "rules.md")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(global, { recursive: true })
+            await fs.mkdir(project, { recursive: true })
+            await fs.writeFile(globalRules, "global-rules")
+            await fs.writeFile(projectRules, "project-rules")
+          })
+          const baseline = yield* loadBaseline(
+            instructionLayer({
+              config: global,
+              instructions: ["rules.md"],
+              locationServiceLayer: locationAt(project),
+            }),
+          )
+          expect(baseline).toContain(`Instructions from: ${globalRules}\nglobal-rules`)
+          expect(baseline).not.toContain("project-rules")
+        }),
+      ),
+    ),
   )
 })

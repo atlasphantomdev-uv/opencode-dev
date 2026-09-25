@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-console-mail"
 source_paths: ["packages/console/mail"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "89c8640204f8182911476ba79084d4dc4de5881ed06fa6a7bdfdc747f86066da"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "7f6ac80728d624c65424eb9ec7ffdd377bb84d2eaeaf50536e873b694364e987"
 ---
 
 # packages/console/mail

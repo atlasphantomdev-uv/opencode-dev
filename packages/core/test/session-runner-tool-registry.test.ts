@@ -261,7 +261,6 @@ describe("ToolRegistry", () => {
       ).toEqual({
         result: { type: "text", value: "bounded reference" },
         output: { structured: {}, content: [{ type: "text", text: "bounded reference" }] },
-        outputPaths: ["/managed/generic"],
       })
       expect(bounds).toHaveLength(1)
     }),

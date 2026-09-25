@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-stats-server"
 source_paths: ["packages/stats/server"]
 related: ["module-packages-stats-core"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "79c1fe29825aef5c699b01a9c5cbde3ab685d608cc8ea7164253bd15c75f91d0"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "df6db4103c1cea13578ffc7af3ca67100b4c057ecd8b1e9a59542df64baaff07"
 ---
 
 # packages/stats/server

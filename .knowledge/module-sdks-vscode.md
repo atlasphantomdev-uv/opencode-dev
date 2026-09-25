@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-sdks-vscode"
 source_paths: ["sdks/vscode"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "9d05b08c1492b8ae72abefa8911b93dda4d5bbd5c7450e6ac74f7f533e016eee"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "63b9c4eb55271c80c9df7d76eb541220f671c99a55bc6dee5c554bbc8afdf269"
 ---
 
 # sdks/vscode

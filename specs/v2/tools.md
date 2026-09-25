@@ -183,4 +183,4 @@ Leaf tools translate only errors they deliberately classify as recoverable. Broa
 
 Location plugin installation should receive the same narrow `Tools` capability. That requires a separate Location-layer ordering change so built-ins register before plugins without introducing a `PluginBoot -> Tools -> PluginBoot` dependency cycle. The carrier, registrar, and plugin-owned Scope semantics are already suitable; no tool-specific plugin hook is needed.
 
-Session's current public result shape still exposes managed `outputPaths`. Extending storage encapsulation across the public Session API requires a separate opaque managed-output reference design; paths are not entirely internal today.
+Session's public result shape no longer exposes managed `outputPaths`; they remain internal to the output store. Letting consumers address a managed output still requires a separate opaque managed-output reference design.

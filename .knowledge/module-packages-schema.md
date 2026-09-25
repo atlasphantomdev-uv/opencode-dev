@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-schema"
 source_paths: ["packages/schema"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "8d6cd9195ff0ec8accc804c10fd020ee1028b260bdfc7997cefc432c5dcfbd5a"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "529bce5a8b7e5ee42cae7e29f73750f6e1d1931692b067c1173f43a1a3d2514c"
 ---
 
 # packages/schema

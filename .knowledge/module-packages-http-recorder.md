@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-http-recorder"
 source_paths: ["packages/http-recorder"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "e60da7716ed62e92ce381ebb4fb87570125a3d133805ecaff7d31f66f32cd54f"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "29ee5bf4e309af106458d9637be5a4dfaf4110b003b68e0c324085afdfa23431"
 ---
 
 # packages/http-recorder

@@ -96,6 +96,7 @@ const execution = Layer.effect(
       resume: coordinator.run,
       wake: coordinator.wake,
       interrupt: coordinator.interrupt,
+      await: coordinator.await,
     })
   }),
 ).pipe(Layer.provide(runnerLayer))

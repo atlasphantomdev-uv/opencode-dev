@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-storybook"
 source_paths: ["packages/storybook"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "11305f5755cea40bd77a1f9acc7b1e1833b08e2c6120be4f4a77ea7507b06e2d"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "fbf3c74842afabf195d8bb2b7b3be65bf2f8a0cffe7a72357a29b96fc365b321"
 ---
 
 # packages/storybook

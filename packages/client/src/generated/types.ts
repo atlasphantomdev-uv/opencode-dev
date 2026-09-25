@@ -630,7 +630,6 @@ export type SessionsContextOutput = {
                       | { readonly type: "text"; readonly text: string }
                       | { readonly type: "file"; readonly uri: string; readonly mime: string; readonly name?: string }
                     >
-                    readonly outputPaths?: ReadonlyArray<string>
                     readonly structured: { readonly [x: string]: JsonValue }
                     readonly result?: JsonValue
                   }
@@ -674,6 +673,12 @@ export type SessionsContextOutput = {
         readonly time: { readonly created: number }
       }
   >
+}["data"]
+
+export type SessionsTodoInput = { readonly sessionID: { readonly sessionID: string }["sessionID"] }
+
+export type SessionsTodoOutput = {
+  readonly data: ReadonlyArray<{ readonly content: string; readonly status: string; readonly priority: string }>
 }["data"]
 
 export type SessionsHistoryInput = {
@@ -988,7 +993,6 @@ export type SessionsHistoryOutput = {
             | { readonly type: "text"; readonly text: string }
             | { readonly type: "file"; readonly uri: string; readonly mime: string; readonly name?: string }
           >
-          readonly outputPaths?: ReadonlyArray<string>
           readonly result?: JsonValue
           readonly provider: {
             readonly executed: boolean
@@ -1446,7 +1450,6 @@ export type SessionsEventsOutput =
           | { readonly type: "text"; readonly text: string }
           | { readonly type: "file"; readonly uri: string; readonly mime: string; readonly name?: string }
         >
-        readonly outputPaths?: ReadonlyArray<string>
         readonly result?: unknown
         readonly provider: {
           readonly executed: boolean
@@ -1708,7 +1711,6 @@ export type SessionsMessageOutput = {
                       | { readonly type: "text"; readonly text: string }
                       | { readonly type: "file"; readonly uri: string; readonly mime: string; readonly name?: string }
                     >
-                    readonly outputPaths?: ReadonlyArray<string>
                     readonly structured: { readonly [x: string]: JsonValue }
                     readonly result?: JsonValue
                   }
@@ -1880,7 +1882,6 @@ export type MessagesListOutput = {
                       | { readonly type: "text"; readonly text: string }
                       | { readonly type: "file"; readonly uri: string; readonly mime: string; readonly name?: string }
                     >
-                    readonly outputPaths?: ReadonlyArray<string>
                     readonly structured: { readonly [x: string]: JsonValue }
                     readonly result?: JsonValue
                   }

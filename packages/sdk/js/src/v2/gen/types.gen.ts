@@ -1098,7 +1098,6 @@ export type GlobalEvent = {
             [key: string]: unknown
           }
           content: Array<LlmToolContent>
-          outputPaths?: Array<string>
           result?: unknown
           provider: {
             executed: boolean
@@ -3690,7 +3689,6 @@ export type SyncEventSessionNextToolSuccess = {
         [key: string]: unknown
       }
       content: Array<LlmToolContent>
-      outputPaths?: Array<string>
       result?: unknown
       provider: {
         executed: boolean
@@ -4064,7 +4062,6 @@ export type SessionMessageToolStateCompleted = {
   }
   attachments?: Array<PromptFileAttachment>
   content: Array<LlmToolContent>
-  outputPaths?: Array<string>
   structured: {
     [key: string]: unknown
   }
@@ -4575,7 +4572,6 @@ export type SessionNextToolSuccess = {
       [key: string]: unknown
     }
     content: Array<LlmToolContent>
-    outputPaths?: Array<string>
     result?: unknown
     provider: {
       executed: boolean
@@ -6551,7 +6547,6 @@ export type EventSessionNextToolSuccess = {
       [key: string]: unknown
     }
     content: Array<LlmToolContent>
-    outputPaths?: Array<string>
     result?: unknown
     provider: {
       executed: boolean
@@ -9986,44 +9981,6 @@ export type SessionAbortResponses = {
 
 export type SessionAbortResponse = SessionAbortResponses[keyof SessionAbortResponses]
 
-export type SessionInitData = {
-  body?: {
-    modelID: string
-    providerID: string
-    messageID: string
-  }
-  path: {
-    sessionID: string
-  }
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/session/{sessionID}/init"
-}
-
-export type SessionInitErrors = {
-  /**
-   * BadRequest | InvalidRequestError
-   */
-  400: EffectHttpApiErrorBadRequest | InvalidRequestError
-  /**
-   * NotFoundError
-   */
-  404: NotFoundError
-}
-
-export type SessionInitError = SessionInitErrors[keyof SessionInitErrors]
-
-export type SessionInitResponses = {
-  /**
-   * 200
-   */
-  200: boolean
-}
-
-export type SessionInitResponse = SessionInitResponses[keyof SessionInitResponses]
-
 export type SessionUnshareData = {
   body?: never
   path: {
@@ -11832,6 +11789,43 @@ export type V2SessionContextResponses = {
 }
 
 export type V2SessionContextResponse = V2SessionContextResponses[keyof V2SessionContextResponses]
+
+export type V2SessionTodoData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: never
+  url: "/api/session/{sessionID}/todo"
+}
+
+export type V2SessionTodoErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * UnauthorizedError
+   */
+  401: UnauthorizedError
+  /**
+   * SessionNotFoundError
+   */
+  404: SessionNotFoundError
+}
+
+export type V2SessionTodoError = V2SessionTodoErrors[keyof V2SessionTodoErrors]
+
+export type V2SessionTodoResponses = {
+  /**
+   * Success
+   */
+  200: {
+    data: Array<Todo>
+  }
+}
+
+export type V2SessionTodoResponse = V2SessionTodoResponses[keyof V2SessionTodoResponses]
 
 export type V2SessionHistoryData = {
   body?: never

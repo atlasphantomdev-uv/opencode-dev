@@ -37,7 +37,6 @@ export function migrate(info: typeof ConfigV1.Info.Type) {
     $schema: info.$schema,
     shell: info.shell,
     model: info.model,
-    default_agent: info.default_agent,
     autoupdate: info.autoupdate,
     share: info.share ?? (info.autoshare ? "auto" : undefined),
     enterprise: info.enterprise,

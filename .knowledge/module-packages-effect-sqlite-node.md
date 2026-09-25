@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-effect-sqlite-node"
 source_paths: ["packages/effect-sqlite-node"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "0e2907c07fb464d7bde5da587f665aa3a9817566f208cf101749ce5034e2beae"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "7d4b9b1a97e91982f037a83120c33184f0e073b3069f2742d1be054d4bf2b7c0"
 ---
 
 # packages/effect-sqlite-node

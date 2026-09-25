@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-core"
 source_paths: ["packages/core"]
 related: ["module-packages-effect-drizzle-sqlite","module-packages-effect-sqlite-node","module-packages-llm","module-packages-plugin","module-packages-schema"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "96a63b4e6455c7bdfd739550bc798d9e20bd6647e27ecdf012787bbe2c62dcd1"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "47e7f2eb771f3b92f9246816f0cb500c77677135657070c932ee56082a00caeb"
 ---
 
 # packages/core

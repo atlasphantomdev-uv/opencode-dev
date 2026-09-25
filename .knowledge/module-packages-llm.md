@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-llm"
 source_paths: ["packages/llm"]
 related: ["module-packages-schema"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "1f531c32d4003bd7897c69f44c22e7a26aa685de69db6f8430c0fe9dac004273"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "044dec30e450545de2d8e8aefa5f83e9e7faa585a7b443d4b004b54f6fec30c2"
 ---
 
 # packages/llm

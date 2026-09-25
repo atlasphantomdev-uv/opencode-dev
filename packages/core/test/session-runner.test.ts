@@ -301,6 +301,7 @@ const execution = Layer.effect(
       resume: coordinator.run,
       wake: coordinator.wake,
       interrupt: coordinator.interrupt,
+      await: coordinator.await,
     })
   }),
 )
@@ -694,6 +695,19 @@ describe("SessionRunnerLLM", () => {
       expect(yield* session.messages({ sessionID })).toMatchObject([
         { id: message.id, type: "user", text: "Run automatically" },
       ])
+    }),
+  )
+
+  it.effect("waits for an idle session without starting a run", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      requests.length = 0
+      response = []
+
+      yield* session.wait(sessionID)
+
+      expect(requests).toHaveLength(0)
     }),
   )
 
@@ -1131,16 +1145,15 @@ describe("SessionRunnerLLM", () => {
     Effect.gen(function* () {
       yield* setup
       const session = yield* SessionV2.Service
-      mcpBaseline = '<mcp_instructions>\n  <server name="fake">\n    Use only the fake server.\n  </server>\n</mcp_instructions>'
+      mcpBaseline =
+        '<mcp_instructions>\n  <server name="fake">\n    Use only the fake server.\n  </server>\n</mcp_instructions>'
       yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "First" }), resume: false })
 
       requests.length = 0
       response = []
       yield* session.resume(sessionID)
 
-      expect(requests.map((request) => request.system.at(-1)?.text)).toEqual([
-        `Initial context\n\n${mcpBaseline}`,
-      ])
+      expect(requests.map((request) => request.system.at(-1)?.text)).toEqual([`Initial context\n\n${mcpBaseline}`])
     }),
   )
 
@@ -1226,9 +1239,7 @@ describe("SessionRunnerLLM", () => {
       response = []
       yield* session.resume(sessionID)
 
-      expect(systemTexts(requests[0]!)).not.toContainEqual(
-        expect.stringContaining("operational mode has changed"),
-      )
+      expect(systemTexts(requests[0]!)).not.toContainEqual(expect.stringContaining("operational mode has changed"))
     }),
   )
 

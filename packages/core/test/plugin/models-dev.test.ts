@@ -149,13 +149,7 @@ describe("ModelsDevPlugin", () => {
             new Integration.Info({
               id: Integration.ID.make("acme"),
               name: "Acme",
-              methods: [
-                { type: "key" },
-                {
-                  type: "env",
-                  names: ["ACME_API_KEY"],
-                },
-              ],
+              methods: [{ type: "key" }],
               connections: [],
             }),
           ])

@@ -1,5 +1,6 @@
 import { SessionMessage } from "@opencode-ai/schema/session-message"
 import { SessionInput } from "@opencode-ai/schema/session-input"
+import { SessionTodo } from "@opencode-ai/schema/session-todo"
 import { PromptInput } from "@opencode-ai/schema/prompt-input"
 import { Session } from "@opencode-ai/schema/session"
 import { Project } from "@opencode-ai/schema/project"
@@ -300,6 +301,21 @@ export const makeSessionGroup = <I extends HttpApiMiddleware.AnyId, S>(sessionLo
             identifier: "v2.session.context",
             summary: "Get session context",
             description: "Retrieve the active context messages for a session (all messages after the last compaction).",
+          }),
+        ),
+    )
+    .add(
+      HttpApiEndpoint.get("session.todo", "/api/session/:sessionID/todo", {
+        params: { sessionID: Session.ID },
+        success: Schema.Struct({ data: Schema.Array(SessionTodo.Info) }),
+        error: SessionNotFoundError,
+      })
+        .middleware(sessionLocationMiddleware)
+        .annotateMerge(
+          OpenApi.annotations({
+            identifier: "v2.session.todo",
+            summary: "Get session todos",
+            description: "Retrieve the todo list for a session in position order.",
           }),
         ),
     )

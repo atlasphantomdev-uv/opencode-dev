@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-plugin"
 source_paths: ["packages/plugin"]
 related: ["module-packages-sdk-js"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "53739a9d50b33d9f46ba320e3ff4cdc21a543accb405e70835ce9d89a875dfd2"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "139918f942e4565af6ca3cec3bd968a9d940e9d60ad681f7cc75eb0479a3bb32"
 ---
 
 # packages/plugin

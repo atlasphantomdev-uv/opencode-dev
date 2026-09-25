@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-console-function"
 source_paths: ["packages/console/function"]
 related: ["module-packages-console-core","module-packages-console-resource"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "4643f5f65e1438f2f2587f3fdf145caa1f9bd6a0a042d782e2a1b4a9116ac85e"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "f255840bd19ebbe20a0b4b4cff80ff9c1553cf72d87479ecff1d182a9fe4d9ed"
 ---
 
 # packages/console/function

@@ -242,10 +242,7 @@ export const createLLMEventPublisher = (events: EventV2.Interface, input: Input)
     return tool ? Effect.succeed(tool.assistantMessageID) : Effect.die(`Unknown tool call: ${callID}`)
   }
 
-  const publish = Effect.fn("SessionRunner.publishLLMEvent")(function* (
-    event: LLMEvent,
-    outputPaths: ReadonlyArray<string> = [],
-  ) {
+  const publish = Effect.fn("SessionRunner.publishLLMEvent")(function* (event: LLMEvent) {
     switch (event.type) {
       case "step-start":
         toolStreak = undefined
@@ -380,7 +377,6 @@ export const createLLMEventPublisher = (events: EventV2.Interface, input: Input)
           assistantMessageID: tool.assistantMessageID,
           callID: event.id,
           ...result,
-          outputPaths,
           ...(provider.executed ? { result: event.result } : {}),
           provider,
         })

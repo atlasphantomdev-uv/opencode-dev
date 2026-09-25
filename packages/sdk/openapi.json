@@ -6729,110 +6729,6 @@
         ]
       }
     },
-    "/session/{sessionID}/init": {
-      "post": {
-        "tags": ["session"],
-        "operationId": "session.init",
-        "parameters": [
-          {
-            "name": "sessionID",
-            "in": "path",
-            "schema": {
-              "type": "string",
-              "pattern": "^ses"
-            },
-            "required": true
-          },
-          {
-            "name": "directory",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "required": false
-          },
-          {
-            "name": "workspace",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "200",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean",
-                  "description": "200"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "BadRequest | InvalidRequestError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/effect_HttpApiError_BadRequest"
-                    },
-                    {
-                      "$ref": "#/components/schemas/InvalidRequestError"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "NotFoundError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundError"
-                }
-              }
-            }
-          }
-        },
-        "description": "Analyze the current application and create an AGENTS.md file with project-specific agent configurations.",
-        "summary": "Initialize session",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "modelID": {
-                    "type": "string"
-                  },
-                  "providerID": {
-                    "type": "string"
-                  },
-                  "messageID": {
-                    "type": "string",
-                    "pattern": "^msg"
-                  }
-                },
-                "required": ["modelID", "providerID", "messageID"],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createOpencodeClient } from \"@opencode-ai/sdk\n\nconst client = createOpencodeClient()\nawait client.session.init({\n  ...\n})"
-          }
-        ]
-      }
-    },
     "/session/{sessionID}/share": {
       "post": {
         "tags": ["session"],
@@ -11127,6 +11023,91 @@
           {
             "lang": "js",
             "source": "import { createOpencodeClient } from \"@opencode-ai/sdk\n\nconst client = createOpencodeClient()\nawait client.v2.session.context({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/api/session/{sessionID}/todo": {
+      "get": {
+        "tags": ["sessions"],
+        "operationId": "v2.session.todo",
+        "parameters": [
+          {
+            "name": "sessionID",
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses"
+            },
+            "required": true
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Todo"
+                      }
+                    }
+                  },
+                  "required": ["data"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "InvalidRequestError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SessionNotFoundError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SessionNotFoundError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Retrieve the todo list for a session in position order.",
+        "summary": "Get session todos",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createOpencodeClient } from \"@opencode-ai/sdk\n\nconst client = createOpencodeClient()\nawait client.v2.session.todo({\n  ...\n})"
           }
         ]
       }
@@ -18682,12 +18663,6 @@
                         "type": "array",
                         "items": {
                           "$ref": "#/components/schemas/LLMToolContent"
-                        }
-                      },
-                      "outputPaths": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
                         }
                       },
                       "result": {},
@@ -26565,12 +26540,6 @@
                       "$ref": "#/components/schemas/LLMToolContent"
                     }
                   },
-                  "outputPaths": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
                   "result": {},
                   "provider": {
                     "type": "object",
@@ -27689,12 +27658,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LLMToolContent"
-            }
-          },
-          "outputPaths": {
-            "type": "array",
-            "items": {
-              "type": "string"
             }
           },
           "structured": {
@@ -29169,12 +29132,6 @@
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/LLMToolContent"
-                }
-              },
-              "outputPaths": {
-                "type": "array",
-                "items": {
-                  "type": "string"
                 }
               },
               "result": {},
@@ -35093,12 +35050,6 @@
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/LLMToolContent"
-                }
-              },
-              "outputPaths": {
-                "type": "array",
-                "items": {
-                  "type": "string"
                 }
               },
               "result": {},

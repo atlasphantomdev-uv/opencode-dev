@@ -34,7 +34,6 @@ export interface Materialization {
 export interface Settlement {
   readonly result: ToolResultValue
   readonly output?: ToolOutput
-  readonly outputPaths?: ReadonlyArray<string>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/v2/ToolRegistry") {}
@@ -74,11 +73,8 @@ const registryLayer = Layer.effect(
       const output = pending.output
       const bounded = yield* resources.bound({ sessionID: input.sessionID, toolCallID: input.call.id, output })
       const result = ToolOutput.toResultValue(bounded.output)
-      if (result.type === "error")
-        return bounded.outputPaths.length > 0 ? { result, outputPaths: bounded.outputPaths } : { result }
-      return bounded.outputPaths.length > 0
-        ? { result, output: bounded.output, outputPaths: bounded.outputPaths }
-        : { result, output: bounded.output }
+      if (result.type === "error") return { result }
+      return { result, output: bounded.output }
     })
 
     return Service.of({

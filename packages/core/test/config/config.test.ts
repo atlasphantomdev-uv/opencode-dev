@@ -62,7 +62,7 @@ describe("Config", () => {
       ]
 
       expect(Config.latest(entries, "model")).toBe("openrouter/openai/gpt-5.5")
-      expect(Config.latest(entries, "default_agent")).toBeUndefined()
+      expect("default_agent" in Schema.decodeUnknownSync(Config.Info)({ default_agent: "reviewer" })).toBe(false)
     }),
   )
 
@@ -363,7 +363,7 @@ describe("Config", () => {
             expect(documents).toHaveLength(1)
             expect(documents[0]?.info.shell).toBe("/bin/bash")
             expect(documents[0]?.info.model).toBe("anthropic/claude")
-            expect(documents[0]?.info.default_agent).toBe("reviewer")
+            expect("default_agent" in documents[0]!.info).toBe(false)
             expect(documents[0]?.info.autoupdate).toBe("notify")
             expect(documents[0]?.info.share).toBe("disabled")
             expect(documents[0]?.info.enterprise).toEqual({ url: "https://share.example.com" })
@@ -580,7 +580,7 @@ describe("Config", () => {
             expect(documents).toHaveLength(1)
             expect(documents[0]?.info).toBeInstanceOf(Config.Info)
             expect(documents[0]?.info.shell).toBe("/bin/zsh")
-            expect(documents[0]?.info.default_agent).toBe("reviewer")
+            expect("default_agent" in documents[0]!.info).toBe(false)
             expect(documents[0]?.info.snapshots).toBe(false)
             expect(documents[0]?.info.share).toBe("auto")
             expect(documents[0]?.info.permissions).toEqual([

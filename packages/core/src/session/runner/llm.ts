@@ -288,7 +288,8 @@ const layer = Layer.effect(
         if (promoted > 0) currentStep = 1
       }
       const system =
-        initialized ?? (yield* SessionContextEpoch.prepare(db, events, loadSystemContext(agent, session.id), session.id))
+        initialized ??
+        (yield* SessionContextEpoch.prepare(db, events, loadSystemContext(agent, session.id), session.id))
       const model = yield* models.resolve(session)
       const entries = yield* SessionHistory.entriesForRunner(db, session.id, system.baselineSeq)
       const context = entries.map((entry) => entry.message)
@@ -351,8 +352,7 @@ const layer = Layer.effect(
         snapshot: startSnapshot,
       })
       const withPublication = Semaphore.makeUnsafe(1).withPermit
-      const publish = (event: LLMEvent, outputPaths: ReadonlyArray<string> = []) =>
-        withPublication(publisher.publish(event, outputPaths))
+      const publish = (event: LLMEvent) => withPublication(publisher.publish(event))
       let overflowFailure: ProviderErrorEvent | undefined
       if (!(yield* validateTurnSnapshot(session.id, turnSnapshot))) return yield* Effect.interrupt
       const providerStream = llm.stream(turnSnapshot.request).pipe(
@@ -419,7 +419,6 @@ const layer = Layer.effect(
                       result: settlement.result,
                       output: settlement.output,
                     }),
-                    settlement.outputPaths ?? [],
                   ),
                 ),
               ),
@@ -434,10 +433,7 @@ const layer = Layer.effect(
           const stream = yield* restore(providerStream).pipe(Effect.exit)
           // The turn may have become stale while the provider streamed. Stop before settling
           // results, capturing snapshots, or deciding continuation for an invalidated Session.
-          if (
-            stream._tag === "Success" &&
-            !(yield* restore(validateTurnSnapshot(session.id, turnSnapshot)))
-          ) {
+          if (stream._tag === "Success" && !(yield* restore(validateTurnSnapshot(session.id, turnSnapshot)))) {
             yield* FiberSet.clear(toolFibers)
             yield* withPublication(publisher.failUnsettledTools("Tool execution interrupted"))
             return yield* Effect.interrupt

@@ -16,6 +16,20 @@ import { PluginTestLayer } from "../plugin/fixture"
 const it = testEffect(PluginTestLayer)
 const decode = Schema.decodeUnknownSync(Config.Info)
 
+const fixture = (name: string) => path.join(import.meta.dir, "../plugin/fixtures", name)
+
+function npmStub(entrypoints: Record<string, string | undefined>, onAdd?: (spec: string) => void) {
+  return Npm.Service.of({
+    add: (spec) =>
+      Effect.sync(() => {
+        onAdd?.(spec)
+        return { directory: import.meta.dir, entrypoint: entrypoints[spec] }
+      }),
+    install: () => Effect.void,
+    which: () => Effect.succeed(undefined),
+  })
+}
+
 describe("ConfigExternalPlugin", () => {
   it.live("resolves and loads a configured Promise plugin with options", () =>
     Effect.gen(function* () {
@@ -23,7 +37,7 @@ describe("ConfigExternalPlugin", () => {
       const agents = yield* AgentV2.Service
       const fs = yield* FSUtil.Service
       const location = yield* Location.Service
-      const npm = yield* Npm.Service
+      const npm = npmStub({ "config-promise-plugin": fixture("config-promise-plugin.ts") })
       const host = yield* PluginHost.make(plugins)
       const document = path.join(import.meta.dir, "opencode.json")
 
@@ -43,7 +57,7 @@ describe("ConfigExternalPlugin", () => {
                   info: decode({
                     plugins: [
                       {
-                        package: "../plugin/fixtures/config-promise-plugin.ts",
+                        package: "config-promise-plugin",
                         options: { description: "Loaded from config" },
                       },
                     ],
@@ -67,7 +81,7 @@ describe("ConfigExternalPlugin", () => {
       const agents = yield* AgentV2.Service
       const fs = yield* FSUtil.Service
       const location = yield* Location.Service
-      const npm = yield* Npm.Service
+      const npm = npmStub({ "config-effect-plugin": fixture("config-effect-plugin.ts") })
       const host = yield* PluginHost.make(plugins)
 
       yield* ConfigExternalPlugin.Plugin.effect(host).pipe(
@@ -86,7 +100,7 @@ describe("ConfigExternalPlugin", () => {
                   info: decode({
                     plugins: [
                       {
-                        package: "../plugin/fixtures/config-effect-plugin.ts",
+                        package: "config-effect-plugin",
                         options: { description: "Effect plugin from config" },
                       },
                     ],
@@ -104,13 +118,21 @@ describe("ConfigExternalPlugin", () => {
     }),
   )
 
-  it.live("ignores invalid plugins and continues loading", () =>
+  it.live("ignores local plugin references and invalid packages and continues loading", () =>
     Effect.gen(function* () {
       const plugins = yield* PluginV2.Service
       const agents = yield* AgentV2.Service
       const fs = yield* FSUtil.Service
       const location = yield* Location.Service
-      const npm = yield* Npm.Service
+      const installed: string[] = []
+      const npm = npmStub(
+        {
+          "missing-plugin": undefined,
+          "invalid-plugin": fixture("invalid-plugin.ts"),
+          "config-promise-plugin": fixture("config-promise-plugin.ts"),
+        },
+        (spec) => installed.push(spec),
+      )
       const host = yield* PluginHost.make(plugins)
 
       yield* ConfigExternalPlugin.Plugin.effect(host).pipe(
@@ -128,10 +150,12 @@ describe("ConfigExternalPlugin", () => {
                   path: path.join(import.meta.dir, "opencode.json"),
                   info: decode({
                     plugins: [
-                      "../plugin/fixtures/missing-plugin.ts",
-                      "../plugin/fixtures/invalid-plugin.ts",
+                      "../plugin/fixtures/config-promise-plugin.ts",
+                      "file:///tmp/local-plugin.ts",
+                      "missing-plugin",
+                      "invalid-plugin",
                       {
-                        package: "../plugin/fixtures/config-promise-plugin.ts",
+                        package: "config-promise-plugin",
                         options: { description: "Loaded after invalid plugins" },
                       },
                     ],
@@ -145,6 +169,7 @@ describe("ConfigExternalPlugin", () => {
       expect(yield* waitForAgent(agents, "configured")).toMatchObject({
         description: "Loaded after invalid plugins",
       })
+      expect(installed).toEqual(["missing-plugin", "invalid-plugin", "config-promise-plugin"])
     }),
   )
 
@@ -156,18 +181,7 @@ describe("ConfigExternalPlugin", () => {
       const location = yield* Location.Service
       const host = yield* PluginHost.make(plugins)
       let installed: string | undefined
-      const npm = Npm.Service.of({
-        add: (spec) =>
-          Effect.sync(() => {
-            installed = spec
-            return {
-              directory: import.meta.dir,
-              entrypoint: path.join(import.meta.dir, "../plugin/fixtures/config-promise-plugin.ts"),
-            }
-          }),
-        install: () => Effect.void,
-        which: () => Effect.succeed(undefined),
-      })
+      const npm = npmStub({ "example-plugin@1.0.0": fixture("config-promise-plugin.ts") }, (spec) => (installed = spec))
 
       yield* ConfigExternalPlugin.Plugin.effect(host).pipe(
         Effect.provideService(PluginV2.Service, plugins),

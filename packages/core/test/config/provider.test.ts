@@ -5,7 +5,9 @@ import { Config } from "@opencode-ai/core/config"
 import { ConfigProviderPlugin } from "@opencode-ai/core/config/plugin/provider"
 import { Integration } from "@opencode-ai/core/integration"
 import { ModelV2 } from "@opencode-ai/core/model"
+import { ModelsDev } from "@opencode-ai/core/models-dev"
 import { PluginV2 } from "@opencode-ai/core/plugin"
+import { EnvPlugin } from "@opencode-ai/core/plugin/env"
 import { PluginHost } from "@opencode-ai/core/plugin/host"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { testEffect } from "../lib/effect"
@@ -13,10 +15,16 @@ import { PluginTestLayer } from "../plugin/fixture"
 
 const it = testEffect(PluginTestLayer)
 
+const models = ModelsDev.Service.of({ get: () => Effect.succeed({}), refresh: () => Effect.void })
+
 const addPlugin = Effect.fn(function* (config: Config.Interface) {
   const plugin = yield* PluginV2.Service
   const host = yield* PluginHost.make(plugin)
   yield* ConfigProviderPlugin.Plugin.effect(host).pipe(Effect.provideService(Config.Service, config))
+  yield* EnvPlugin.Plugin.effect(host).pipe(
+    Effect.provideService(Config.Service, config),
+    Effect.provideService(ModelsDev.Service, models),
+  )
 })
 
 function required<T>(value: T | undefined): T {

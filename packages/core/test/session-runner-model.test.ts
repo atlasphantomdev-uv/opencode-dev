@@ -316,16 +316,59 @@ describe("SessionRunnerModel", () => {
   it.effect("rejects catalog APIs without a native route", () =>
     Effect.gen(function* () {
       const failure = yield* SessionRunnerModel.fromCatalogModel(
-        model({ type: "aisdk", package: "@ai-sdk/google", url: "https://google.example/v1" }),
+        model({ type: "aisdk", package: "@ai-sdk/cohere", url: "https://cohere.example/v1" }),
       ).pipe(Effect.flip)
 
       expect(failure).toMatchObject({
         _tag: "SessionRunnerModel.UnsupportedApiError",
         providerID: "test-provider",
         modelID: "test-model",
-        api: "aisdk:@ai-sdk/google",
+        api: "aisdk:@ai-sdk/cohere",
       })
-      expect(failure.message).toBe("Unsupported API for test-provider/test-model: aisdk:@ai-sdk/google")
+      expect(failure.message).toBe("Unsupported API for test-provider/test-model: aisdk:@ai-sdk/cohere")
+    }),
+  )
+
+  it.effect("maps catalog Google AI SDK models into native Gemini routes", () =>
+    Effect.gen(function* () {
+      const resolved = yield* SessionRunnerModel.fromCatalogModel(
+        model({ type: "aisdk", package: "@ai-sdk/google", url: "https://google.example/v1" }),
+      )
+
+      expect(resolved.route).toMatchObject({
+        id: "gemini",
+        endpoint: { baseURL: "https://google.example/v1" },
+      })
+      const headers = yield* resolved.route.auth.apply({
+        request: LLM.request({ model: resolved, prompt: "Hello" }),
+        method: "POST",
+        url: "https://google.example/v1/models/api-test-model:streamGenerateContent?alt=sse",
+        body: "{}",
+        headers: Headers.empty,
+      })
+      expect(headers["x-goog-api-key"]).toBe("secret")
+    }),
+  )
+
+  it.effect("maps catalog OpenRouter AI SDK models into native OpenRouter routes", () =>
+    Effect.gen(function* () {
+      const resolved = yield* SessionRunnerModel.fromCatalogModel(
+        model({ type: "aisdk", package: "@openrouter/ai-sdk-provider", url: "https://openrouter.example/v1" }),
+      )
+
+      expect(resolved).toMatchObject({ id: "api-test-model", provider: "test-provider" })
+      expect(resolved.route).toMatchObject({
+        id: "openrouter",
+        endpoint: { baseURL: "https://openrouter.example/v1" },
+      })
+      const headers = yield* resolved.route.auth.apply({
+        request: LLM.request({ model: resolved, prompt: "Hello" }),
+        method: "POST",
+        url: "https://openrouter.example/v1/chat/completions",
+        body: "{}",
+        headers: Headers.empty,
+      })
+      expect(headers.authorization).toBe("Bearer secret")
     }),
   )
 
@@ -340,7 +383,18 @@ describe("SessionRunnerModel", () => {
         SessionRunnerModel.supported(
           model({ type: "aisdk", package: "@ai-sdk/google", url: "https://google.example/v1" }),
         ),
-      ).toBe(false)
+      ).toBe(true)
+      expect(
+        SessionRunnerModel.supported(
+          model({ type: "aisdk", package: "@openrouter/ai-sdk-provider", url: "https://openrouter.example/v1" }),
+        ),
+      ).toBe(true)
+      expect(
+        SessionRunnerModel.supported(
+          model({ type: "aisdk", package: "@ai-sdk/openai-compatible", url: "https://compatible.example/v1" }),
+        ),
+      ).toBe(true)
+      expect(SessionRunnerModel.supported(model({ type: "aisdk", package: "@ai-sdk/cohere" }))).toBe(false)
       expect(SessionRunnerModel.supported(model({ type: "native", settings: {} }))).toBe(false)
     }),
   )

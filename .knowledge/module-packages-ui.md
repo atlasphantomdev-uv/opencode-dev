@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-ui"
 source_paths: ["packages/ui"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "1d7500ce647e95a300c483f1fdde3a4d075ebf962f5edf749745438fdbabe16f"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "246901867be787fb6861b7676c2c851107cc39593bdba743119bd67353c54d2f"
 ---
 
 # packages/ui

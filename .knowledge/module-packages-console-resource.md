@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-console-resource"
 source_paths: ["packages/console/resource"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "cfdf9b8aa0eef743d2fb66443ff468f856be9f4f82c6f4d61b7e52ae49403928"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "c8079d40d672b7893fcac07e1a23f51b7a4a2ef6a6b557ae98a0d7c8018c3da6"
 ---
 
 # packages/console/resource

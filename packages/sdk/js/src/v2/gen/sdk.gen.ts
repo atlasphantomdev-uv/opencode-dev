@@ -193,8 +193,6 @@ import type {
   SessionForkResponses,
   SessionGetErrors,
   SessionGetResponses,
-  SessionInitErrors,
-  SessionInitResponses,
   SessionListErrors,
   SessionListResponses,
   SessionMessageErrors,
@@ -381,6 +379,8 @@ import type {
   V2SessionSwitchAgentResponses,
   V2SessionSwitchModelErrors,
   V2SessionSwitchModelResponses,
+  V2SessionTodoErrors,
+  V2SessionTodoResponses,
   V2SessionWaitErrors,
   V2SessionWaitResponses,
   V2SkillListErrors,
@@ -3938,49 +3938,6 @@ export class Session2 extends HeyApiClient {
   }
 
   /**
-   * Initialize session
-   *
-   * Analyze the current application and create an AGENTS.md file with project-specific agent configurations.
-   */
-  public init<ThrowOnError extends boolean = false>(
-    parameters: {
-      sessionID: string
-      directory?: string
-      workspace?: string
-      modelID?: string
-      providerID?: string
-      messageID?: string
-    },
-    options?: Options<never, ThrowOnError>,
-  ) {
-    const params = buildClientParams(
-      [parameters],
-      [
-        {
-          args: [
-            { in: "path", key: "sessionID" },
-            { in: "query", key: "directory" },
-            { in: "query", key: "workspace" },
-            { in: "body", key: "modelID" },
-            { in: "body", key: "providerID" },
-            { in: "body", key: "messageID" },
-          ],
-        },
-      ],
-    )
-    return (options?.client ?? this.client).post<SessionInitResponses, SessionInitErrors, ThrowOnError>({
-      url: "/session/{sessionID}/init",
-      ...options,
-      ...params,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-        ...params.headers,
-      },
-    })
-  }
-
-  /**
    * Unshare session
    *
    * Remove the shareable link for a session, making it private again.
@@ -5707,6 +5664,25 @@ export class Session3 extends HeyApiClient {
     const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "sessionID" }] }])
     return (options?.client ?? this.client).get<V2SessionContextResponses, V2SessionContextErrors, ThrowOnError>({
       url: "/api/session/{sessionID}/context",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get session todos
+   *
+   * Retrieve the todo list for a session in position order.
+   */
+  public todo<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "sessionID" }] }])
+    return (options?.client ?? this.client).get<V2SessionTodoResponses, V2SessionTodoErrors, ThrowOnError>({
+      url: "/api/session/{sessionID}/todo",
       ...options,
       ...params,
     })

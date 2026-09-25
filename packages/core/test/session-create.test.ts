@@ -422,4 +422,27 @@ describe("SessionV2.create", () => {
       ).toBe("Session.NotFoundError")
     }),
   )
+
+  it.effect("moves a session through the durable Session event", () =>
+    Effect.gen(function* () {
+      const session = yield* SessionV2.Service
+      const created = yield* session.create({ location })
+      const destination = AbsolutePath.make("/moved")
+
+      yield* session.move({ sessionID: created.id, destination: { directory: destination } })
+
+      expect(yield* session.get(created.id)).toMatchObject({ location: { directory: destination } })
+      expect(
+        Array.from(
+          yield* session.events({ sessionID: created.id }).pipe(
+            Stream.filter((event) => event.type === "session.next.moved"),
+            Stream.take(1),
+            Stream.runCollect,
+          ),
+        ),
+      ).toMatchObject([
+        { type: "session.next.moved", data: { location: { directory: destination }, subdirectory: "" } },
+      ])
+    }),
+  )
 })

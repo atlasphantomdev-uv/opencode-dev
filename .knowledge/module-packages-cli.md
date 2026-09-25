@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-cli"
 source_paths: ["packages/cli"]
 related: ["module-packages-core","module-packages-sdk-js","module-packages-server","module-packages-tui"]
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "f7d0b715b4a1b1a2b7db239c25908eda0984f7e0d0a91a8e44d07d0840192f25"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "409fb85e377156dc828ff41a5e754476e8ab134c30fb2b4fb3f5a07c441d8e7e"
 ---
 
 # packages/cli

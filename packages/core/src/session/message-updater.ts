@@ -310,7 +310,6 @@ export function update(adapter: Adapter, event: SessionEvent.Event) {
                 input: match.state.input,
                 structured: event.data.structured,
                 content: [...event.data.content],
-                outputPaths: event.data.outputPaths ? [...event.data.outputPaths] : [],
                 result: event.data.result,
               }),
             )

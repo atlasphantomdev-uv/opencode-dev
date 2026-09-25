@@ -3,8 +3,8 @@ type: "knowledge"
 name: "module-packages-function"
 source_paths: ["packages/function"]
 related: []
-last_verified_commit: "e9f3a1384a9f5dbcd006d589d40a6b9d58f4ea83"
-source_digest: "9b9792fe85cb19e5bdce7b4dae8e25f3eebc5ecbd4aeae435a797cc92892d89a"
+last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
+source_digest: "eeed223566c75b3460630421107e93461e639259230ea47986fcac51837f3e3c"
 ---
 
 # packages/function

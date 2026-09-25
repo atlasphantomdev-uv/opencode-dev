@@ -1007,6 +1007,22 @@ const scenarios: Scenario[] = [
     }))
     .json(404, object, "status"),
   http.protected
+    .get("/api/session/{sessionID}/todo", "v2.session.todo")
+    .seeded((ctx) =>
+      Effect.gen(function* () {
+        const session = yield* ctx.session({ title: "Session todo" })
+        yield* ctx.todos(session.id, [
+          { content: "cover session todo", status: "pending" as const, priority: "high" as const },
+        ])
+        return { session }
+      }),
+    )
+    .at((ctx) => ({
+      path: route("/api/session/{sessionID}/todo", { sessionID: ctx.state.session.id }),
+      headers: ctx.headers(),
+    }))
+    .json(200, data(array)),
+  http.protected
     .post("/api/session/{sessionID}/revert/stage", "v2.session.revert.stage")
     .at((ctx) => ({
       path: route("/api/session/{sessionID}/revert/stage", { sessionID: "ses_httpapi_missing" }),
@@ -1414,30 +1430,6 @@ const scenarios: Scenario[] = [
       check(body === true, "missing session abort should remain a no-op success")
     }),
   http.protected
-    .post("/session/{sessionID}/init", "session.init")
-    .preserveDatabase()
-    .withLlm()
-    .seeded((ctx) =>
-      Effect.gen(function* () {
-        const session = yield* ctx.session({ title: "Init session" })
-        const message = yield* ctx.message(session.id, { text: "initialize" })
-        yield* ctx.llmText("initialized")
-        yield* ctx.llmText("initialized")
-        return { session, message }
-      }),
-    )
-    .at((ctx) => ({
-      path: route("/session/{sessionID}/init", { sessionID: ctx.state.session.id }),
-      headers: ctx.headers(),
-      body: { providerID: "test", modelID: "test-model", messageID: ctx.state.message.info.id },
-    }))
-    .jsonEffect(200, (body, ctx) =>
-      Effect.gen(function* () {
-        check(body === true, "init should return true")
-        yield* ctx.llmWait(1)
-      }),
-    ),
-  http.protected
     .post("/session/{sessionID}/message", "session.prompt")
     .preserveDatabase()
     .withLlm()
@@ -1742,13 +1734,7 @@ const scenarios: Scenario[] = [
     .status(400),
 ]
 
-const llmScenarios = new Set([
-  "session.init",
-  "session.prompt",
-  "session.prompt_async",
-  "session.command",
-  "session.summarize",
-])
+const llmScenarios = new Set(["session.prompt", "session.prompt_async", "session.command", "session.summarize"])
 
 const main = Effect.gen(function* () {
   yield* Effect.addFinalizer(() => Effect.promise(() => disposeApps()).pipe(Effect.andThen(cleanupExercisePaths)))

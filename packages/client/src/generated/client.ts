@@ -29,6 +29,8 @@ import type {
   SessionsCommitOutput,
   SessionsContextInput,
   SessionsContextOutput,
+  SessionsTodoInput,
+  SessionsTodoOutput,
   SessionsHistoryInput,
   SessionsHistoryOutput,
   SessionsEventsInput,
@@ -442,6 +444,17 @@ export function make(options: ClientOptions) {
             path: `/api/session/${encodeURIComponent(input.sessionID)}/context`,
             successStatus: 200,
             declaredStatuses: [404, 500, 400, 401],
+            empty: false,
+          },
+          requestOptions,
+        ).then((value) => value.data),
+      todo: (input: SessionsTodoInput, requestOptions?: RequestOptions) =>
+        request<{ readonly data: SessionsTodoOutput }>(
+          {
+            method: "GET",
+            path: `/api/session/${encodeURIComponent(input.sessionID)}/todo`,
+            successStatus: 200,
+            declaredStatuses: [404, 400, 401],
             empty: false,
           },
           requestOptions,
