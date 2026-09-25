@@ -62,7 +62,6 @@ Every field is optional.
   "username": "string",
   "model": "provider/model-id",
   "small_model": "provider/model-id",
-  "default_agent": "agent-name",
   "shell": "/bin/zsh",
   "logLevel": "DEBUG" | "INFO" | "WARN" | "ERROR",
   "share": "manual" | "auto" | "disabled",
@@ -95,10 +94,6 @@ Every field is optional.
       "description": "...",
       "permission": { "edit": "deny" }
     }
-  },
-
-  "command": {
-    "deploy": { "description": "...", "template": "..." }
   },
 
   "provider": {
@@ -153,7 +148,6 @@ Shape notes worth being explicit about:
 - `skills` is an object with `paths` and/or `urls`, not an array.
 - `references` is an object keyed by alias. Each value is a local path, Git repository, or string shorthand.
 - `agent` is an object keyed by agent name, not an array.
-- `command` is an object keyed by command name, not an array.
 - `plugin` is an array of strings or `[name, options]` tuples, not an object.
 - `mcp[name].command` is an array of strings, never a single string. `type` is required.
 - `permission` is either a string action or an object keyed by tool name.
@@ -271,8 +265,6 @@ unknown field is silently routed into `options`.
 
 To disable a built-in agent: `agent: { build: { disable: true } }`, or in a
 file, `disable: true` in frontmatter.
-
-`default_agent` must point to a non-hidden, primary-mode agent.
 
 ### Built-in agents
 

@@ -3,8 +3,8 @@ type: "knowledge"
 name: "integrations"
 source_paths: ["packages/llm/src","packages/opencode/src/mcp","packages/opencode/src/mcp/index.ts","packages/opencode/src/cli/cmd/mcp.ts","packages/opencode/src/server/routes/instance/httpapi/handlers/mcp.ts","packages/opencode/src/lsp","packages/core/src/mcp.ts","packages/core/src/lsp.ts","packages/core/src/tool","packages/core/src/plugin","packages/core/src/integration.ts","packages/plugin"]
 related: ["architecture","security"]
-last_verified_commit: "4eefbb450e81e49a41dd7cc14a9e1285db0ef7c3"
-source_digest: "3b402e866f2db5b22fe4cadd2cc7ac72021198c7e33d7512b532a68ba18d9f10"
+last_verified_commit: "eef36e3bfba5342598a380ad5af045ecfac2389a"
+source_digest: "515e97a4ad4a3eed1cf398b8d630661d323953cb58296edc269a306674ee9b74"
 ---
 
 # integrations

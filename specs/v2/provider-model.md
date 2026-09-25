@@ -21,94 +21,55 @@ export const ID = Schema.String.pipe(
 )
 export type ID = typeof ID.Type
 
-const OpenAIResponses = Schema.Struct({
-  type: Schema.Literal("openai/responses"),
-  url: Schema.String,
-  websocket: Schema.optional(Schema.Boolean),
-})
-
-const OpenAICompletions = Schema.Struct({
-  type: Schema.Literal("openai/completions"),
-  url: Schema.String,
-  reasoning: Schema.Union([
-    Schema.Struct({
-      type: Schema.Literal("reasoning_content"),
-    }),
-    Schema.Struct({
-      type: Schema.Literal("reasoning_details"),
-    }),
-  ]).pipe(Schema.optional),
-})
-export type OpenAICompletions = typeof OpenAICompletions.Type
-
-const AISDK = Schema.Struct({
+export interface AISDK extends Schema.Schema.Type<typeof AISDK> {}
+export const AISDK = Schema.Struct({
   type: Schema.Literal("aisdk"),
   package: Schema.String,
-  url: Schema.String.pipe(Schema.optional),
-})
+  url: Schema.String.pipe(optional),
+  settings: Schema.Record(Schema.String, Schema.Unknown).pipe(optional),
+}).annotate({ identifier: "Provider.AISDK" })
 
-const AnthropicMessages = Schema.Struct({
-  type: Schema.Literal("anthropic/messages"),
-  url: Schema.String,
-})
+export interface Native extends Schema.Schema.Type<typeof Native> {}
+export const Native = Schema.Struct({
+  type: Schema.Literal("native"),
+  url: Schema.String.pipe(optional),
+  settings: Schema.Record(Schema.String, Schema.Unknown),
+}).annotate({ identifier: "Provider.Native" })
 
-const UnknownEndpoint = Schema.Struct({
-  type: Schema.Literal("unknown"),
-})
+export const Api = Schema.Union([AISDK, Native])
+  .pipe(Schema.toTaggedUnion("type"))
+  .annotate({ identifier: "Provider.Api" })
+export type Api = typeof Api.Type
 
-export const Endpoint = Schema.Union([
-  UnknownEndpoint,
-  OpenAIResponses,
-  OpenAICompletions,
-  AnthropicMessages,
-  AISDK,
-]).pipe(Schema.toTaggedUnion("type"))
-export type Endpoint = typeof Endpoint.Type
-
-export const Options = Schema.Struct({
+export const Request = Schema.Struct({
   headers: Schema.Record(Schema.String, Schema.String),
-  body: Schema.Record(Schema.String, Schema.Any),
-  aisdk: Schema.Struct({
-    provider: Schema.Record(Schema.String, Schema.Any),
-    request: Schema.Record(Schema.String, Schema.Any),
-  }),
-})
-export type Options = typeof Options.Type
+  body: Schema.Record(Schema.String, Schema.Json),
+}).annotate({ identifier: "Provider.Request" })
 
-export class Info extends Schema.Class<Info>("ProviderV2.Info")({
+export interface Info extends Schema.Schema.Type<typeof Info> {}
+export const Info = Schema.Struct({
   id: ID,
+  integrationID: Integration.ID.pipe(optional),
   name: Schema.String,
-  enabled: Schema.Union([
-    Schema.Literal(false),
-    Schema.Struct({ via: Schema.Literal("env"), name: Schema.String }),
-    Schema.Struct({ via: Schema.Literal("account"), service: Schema.String }),
-    Schema.Struct({ via: Schema.Literal("custom"), data: Schema.Record(Schema.String, Schema.Any) }),
-  ]),
-  env: Schema.String.pipe(Schema.Array),
-  endpoint: Endpoint,
-  options: Options,
-}) {
-  static empty(providerID: ID) {
-    return new Info({
-      id: providerID,
-      name: providerID,
-      enabled: false,
-      env: [],
-      endpoint: {
-        type: "unknown",
-      },
-      options: {
-        headers: {},
-        body: {},
-        aisdk: { provider: {}, request: {} },
-      },
-    })
-  }
-}
+  disabled: Schema.Boolean.pipe(optional),
+  api: Api,
+  request: Request,
+})
+  .annotate({ identifier: "ProviderV2.Info" })
+  .pipe(
+    statics((schema) => ({
+      empty: (id: ID) =>
+        schema.make({
+          id,
+          name: id,
+          api: { type: "native", settings: {} },
+          request: { headers: {}, body: {} },
+        }),
+    })),
+  )
 
-export class NotFound extends Schema.TaggedErrorClass<NotFound>("ProviderV2.NotFound")("ProviderV2.NotFound", {
-  providerID: ID,
-}) {}
+// `ProviderV2.NotFound` is not present in `packages/core/src/catalog.ts`.
+// Catalog provider lookup returns `undefined` instead (see Catalog Interface below).
 ```
 
 ## Model Schema
@@ -130,11 +91,9 @@ export const Capabilities = Schema.Struct({
 })
 export type Capabilities = typeof Capabilities.Type
 
-export const Variant = Schema.Struct({
-  id: VariantID,
-  ...ProviderV2.Options.fields,
-})
-export type Variant = typeof Variant.Type
+// Variants are inlined into `ModelV2.Info` as
+// `variants: Array<{ id: VariantID, ...Provider.Request.fields }>`.
+// There is no standalone `Variant` schema; `VariantID` remains a brand.
 
 export const Cost = Schema.Struct({
   tier: Schema.Struct({
@@ -164,105 +123,106 @@ export const Ref = Schema.Struct({
 })
 export type Ref = typeof Ref.Type
 
-export class Info extends Schema.Class<Info>("ModelV2.Info")({
+export const Api = Schema.Union([
+  Schema.Struct({ id: ID, ...Provider.AISDK.fields }),
+  Schema.Struct({ id: ID, ...Provider.Native.fields }),
+])
+  .pipe(Schema.toTaggedUnion("type"))
+  .annotate({ identifier: "Model.Api" })
+export type Api = typeof Api.Type
+
+export interface Info extends Schema.Schema.Type<typeof Info> {}
+export const Info = Schema.Struct({
   id: ID,
-  apiID: ID,
-  providerID: ProviderV2.ID,
-  family: Family.pipe(Schema.optional),
+  providerID: Provider.ID,
+  family: Family.pipe(optional),
   name: Schema.String,
-  endpoint: ProviderV2.Endpoint,
-  options: Schema.Struct({
-    ...ProviderV2.Options.fields,
-    variant: Schema.String.pipe(Schema.optional),
-  }),
+  api: Api,
   capabilities: Capabilities,
-  variants: Variant.pipe(Schema.Array),
-  time: Schema.Struct({
-    released: DateTimeUtcFromMillis,
+  request: Schema.Struct({
+    ...Provider.Request.fields,
+    variant: Schema.String.pipe(optional),
   }),
-  cost: Cost.pipe(Schema.Array),
+  variants: Schema.Struct({
+    id: VariantID,
+    ...Provider.Request.fields,
+  }).pipe(Schema.Array),
+  time: Schema.Struct({
+    released: Schema.Finite,
+  }),
+  cost: Schema.Array(Cost),
   status: Schema.Literals(["alpha", "beta", "deprecated", "active"]),
   enabled: Schema.Boolean,
-  limit: Limit,
-}) {
-  static empty(providerID: ProviderV2.ID, modelID: ID) {
-    return new Info({
-      id: modelID,
-      apiID: modelID,
-      providerID,
-      name: modelID,
-      endpoint: {
-        type: "unknown",
-      },
-      capabilities: {
-        tools: false,
-        input: [],
-        output: [],
-      },
-      options: {
-        headers: {},
-        body: {},
-        aisdk: { provider: {}, request: {} },
-      },
-      variants: [],
-      time: {
-        released: DateTime.makeUnsafe(0),
-      },
-      cost: [],
-      status: "active",
-      enabled: true,
-      limit: {
-        context: 0,
-        output: 0,
-      },
-    })
-  }
-}
+  limit: Schema.Struct({
+    context: Schema.Int,
+    input: Schema.Int.pipe(optional),
+    output: Schema.Int,
+  }),
+})
+  .annotate({ identifier: "ModelV2.Info" })
+  .pipe(
+    statics((schema) => ({
+      empty: (providerID: Provider.ID, modelID: ID) =>
+        schema.make({
+          id: modelID,
+          providerID,
+          name: modelID,
+          api: { id: modelID, type: "native", settings: {} },
+          capabilities: { tools: false, input: [], output: [] },
+          request: { headers: {}, body: {} },
+          variants: [],
+          time: { released: 0 },
+          cost: [],
+          status: "active",
+          enabled: true,
+          limit: { context: 0, output: 0 },
+        }),
+    })),
+  )
 ```
 
 ## Catalog Interface
 
 ```ts
-export interface Interface {
-  readonly transform: State.Interface<Data, Editor>["transform"]
+export interface Interface extends State.Transformable<Draft> {
   readonly provider: {
-    readonly get: (providerID: ProviderV2.ID) => Effect.Effect<ProviderV2.Info, ProviderNotFoundError>
+    readonly get: (providerID: ProviderV2.ID) => Effect.Effect<ProviderV2.Info | undefined>
     readonly all: () => Effect.Effect<ProviderV2.Info[]>
     readonly available: () => Effect.Effect<ProviderV2.Info[]>
   }
 
   readonly model: {
-    readonly get: (
-      providerID: ProviderV2.ID,
-      modelID: ModelV2.ID,
-    ) => Effect.Effect<ModelV2.Info, ProviderNotFoundError | ModelNotFoundError>
+    readonly get: (providerID: ProviderV2.ID, modelID: ModelV2.ID) => Effect.Effect<ModelV2.Info | undefined>
     readonly all: () => Effect.Effect<ModelV2.Info[]>
     readonly available: () => Effect.Effect<ModelV2.Info[]>
-    readonly default: () => Effect.Effect<Option.Option<ModelV2.Info>>
-    readonly small: (providerID: ProviderV2.ID) => Effect.Effect<Option.Option<ModelV2.Info>>
+    readonly default: () => Effect.Effect<ModelV2.Info | undefined>
+    readonly small: (providerID: ProviderV2.ID) => Effect.Effect<ModelV2.Info | undefined>
   }
 }
 ```
 
-`ProviderV2.Info.enabled` is stored provider state. Provider plugins set it to `false` or record whether availability comes from environment, account, or custom configuration.
+`ProviderV2.Info.disabled` is stored provider state. Provider plugins leave it unset (available) or set it to `true` to exclude the provider.
 
-`ProviderV2.Endpoint` includes `{ type: "unknown" }`. `CatalogV2.model.get()` and `CatalogV2.model.all()` resolve `unknown` endpoints from the provider before returning models.
+`ProviderV2.Api` is the tagged union `aisdk | native`; there is no `unknown` endpoint. `CatalogV2.model.get()` and `CatalogV2.model.all()` project each stored model against its provider's `api` and `request` before returning it.
 
 Model storage is nested by provider because model ids are only unique within a provider.
 
 ```ts
 type ProviderRecord = {
-  provider: ProviderV2.Info
-  models: HashMap.HashMap<ModelV2.ID, ModelV2.Info>
+  provider: ProviderV2.MutableInfo
+  models: Map<ModelV2.ID, ModelV2.MutableInfo>
 }
-
-let records = HashMap.empty<ProviderV2.ID, ProviderRecord>()
 ```
 
-`ModelV2.Info.enabled` stores model availability. `CatalogV2.model.available()` also requires a usable provider.
+`ModelV2.Info.enabled` stores model availability. `CatalogV2.model.available()` also requires a usable provider. A provider is usable when it is not `disabled`, exposes a request body `apiKey`, has an active integration connection, or has no integration at all.
 
 ```ts
-const available = provider.enabled !== false && model.enabled
+const available = (provider: ProviderV2.Info, integration: Integration.Info | undefined) => {
+  if (provider.disabled) return false
+  if (typeof provider.request.body.apiKey === "string") return true
+  if (integration?.connections.length) return true
+  return provider.integrationID === undefined && !integration
+}
 ```
 
 ## Current Session Runner Adaptation
@@ -270,20 +230,42 @@ const available = provider.enabled !== false && model.enabled
 The first local V2 Session runner waits for Location plugin boot, then resolves an explicit Session model without silently falling back. Without an explicit model it uses a supported Location catalog default, then falls back to the first available model with a supported route, and otherwise fails with `SessionRunnerModel.ModelNotSelectedError`. Its native adaptation surface is deliberately narrow:
 
 ```text
-openai/responses over HTTP
-openai/completions for OpenAI Chat
-openai/completions for OpenAI-compatible Chat
-anthropic/messages
-aisdk:@ai-sdk/openai
-aisdk:@ai-sdk/openai-compatible with an explicit URL
-aisdk:@ai-sdk/anthropic
+aisdk:@ai-sdk/openai -> openai/responses over HTTP
+aisdk:@ai-sdk/anthropic -> anthropic/messages
+aisdk:@ai-sdk/google -> gemini
+aisdk:@ai-sdk/xai -> openai/responses over HTTP
+aisdk:@openrouter/ai-sdk-provider -> openrouter
+aisdk:@ai-sdk/cerebras -> openai-compatible chat
+aisdk:@ai-sdk/deepinfra -> openai-compatible chat
+aisdk:@ai-sdk/groq -> openai-compatible chat
+aisdk:@ai-sdk/togetherai -> openai-compatible chat
+aisdk:@ai-sdk/openai-compatible with an explicit URL -> openai-compatible chat
 ```
 
-Native endpoint URLs are complete endpoint URLs and are split into base URL plus request path when building an LLM route. AI SDK endpoint URLs remain base URLs. The adapter preserves model headers and body options, environment-backed provider credentials, direct model API keys, and selected Session variant overlays.
+Model `api.url`, when present, is used as the LLM route base URL. The adapter preserves model headers and body options, direct model API keys and resolved integration credentials, and selected Session variant overlays.
 
-Unsupported routes fail explicitly with `SessionRunnerModel.UnsupportedEndpointError`. In particular, `openai/responses` with WebSocket transport must not silently downgrade to HTTP. Google, Azure, Bedrock, OpenRouter-specific behavior, GitHub Copilot, Vertex, gateway adapters, and signed authentication remain future provider slices.
+Unsupported routes fail explicitly with `SessionRunnerModel.UnsupportedApiError`. Azure, Bedrock, GitHub Copilot, Vertex, gateway adapters, and signed authentication remain future provider slices.
 
 ## Plugin Interface
+
+Current `PluginV2.Interface` only supports registration and load coordination; it does not expose hooks or triggers:
+
+```ts
+export const ID = Plugin.ID
+export type ID = typeof ID.Type
+
+export interface Interface {
+  readonly add: (id: ID, effect: PluginRuntime["effect"]) => Effect.Effect<void>
+  readonly remove: (id: ID) => Effect.Effect<void>
+  readonly wait: (id: ID) => Effect.Effect<void>
+}
+```
+
+Plugin modules are declared with the internal `define({ id, effect })` helper in `packages/core/src/plugin/internal.ts`, not a public `PluginV2.Definition`. The internal boot layer supplies required services to each plugin effect.
+
+### Planned: typed hooks (not implemented)
+
+The account hook algebra and `Definition` below are design intent only. No `HookSpec`, `HookFunctions`, `Definition`, or `Interface.trigger` exists in the current source.
 
 ```ts
 type HookSpec = {
@@ -334,17 +316,11 @@ export type Definition<R = never> = Effect.Effect<
   never,
   R
 >
-
-export interface Interface {
-  readonly add: <R = never>(input: { id: ID; definition: Definition<R> }) => Effect.Effect<void, never, R>
-
-  readonly remove: (id: ID) => Effect.Effect<void>
-
-  readonly trigger: <Name extends keyof Hooks>(name: Name, input: HookInput<Name>) => Effect.Effect<HookInput<Name>>
-}
 ```
 
 ## Plugin Order
+
+Planned, not implemented. There is no numeric `Order` map in the current source; boot order is the explicit sequence in `packages/core/src/plugin/internal.ts`.
 
 ```ts
 export const Order = {
@@ -359,29 +335,17 @@ export const Order = {
 
 ## Built-In Plugins
 
-```ts
-export const ModelsDevPlugin: PluginV2.Definition<ProviderV2.Service | ModelV2.Service | ModelsDev.Service>
+Current built-ins are the internal boot plugins plus the provider plugin list:
 
-export const EnvPlugin: PluginV2.Definition<ProviderV2.Service | Env.Service>
+- Config plugins (`packages/core/src/config/plugin/`): `ConfigReferencePlugin`, `ConfigAgentPlugin`, `ConfigSkillPlugin`, `ConfigExternalPlugin`, `ConfigProviderPlugin`.
+- Core plugins (`packages/core/src/plugin/`): `AgentPlugin`, `CommandPlugin`, `SkillPlugin`, `ModelsDevPlugin`, `EnvPlugin` (exists; does not expose an `Env.Service`), `VariantPlugin`.
+- Provider plugins (`packages/core/src/plugin/provider/`): Alibaba, AmazonBedrock, Anthropic, Azure, AzureCognitiveServices, Cerebras, CloudflareAIGateway, CloudflareWorkersAI, Cohere, DeepInfra, Gateway, GithubCopilot, GitLab, Google, GoogleVertex, GoogleVertexAnthropic, Groq, Kilo, LLMGateway, Mistral, Nvidia, Opencode, SnowflakeCortex, OpenAICompatible, OpenAI, OpenRouter, Perplexity, SapAICore, TogetherAI, Vercel, Venice, XAI, Zenmux, DynamicProvider.
 
-export const AccountPlugin: PluginV2.Definition<ProviderV2.Service | AccountV2.Service>
-
-export const ConfigPlugin: PluginV2.Definition<ProviderV2.Service | ModelV2.Service | Config.Service>
-
-export const AnthropicPlugin: PluginV2.Definition<ProviderV2.Service | AccountV2.Service>
-
-export const OpenRouterPlugin: PluginV2.Definition<ProviderV2.Service>
-
-export const AmazonBedrockPlugin: PluginV2.Definition<ProviderV2.Service | AccountV2.Service | Env.Service>
-
-export const GoogleVertexPlugin: PluginV2.Definition<ProviderV2.Service | AccountV2.Service | Env.Service>
-
-export const GitLabPlugin: PluginV2.Definition<ProviderV2.Service | AccountV2.Service | Env.Service>
-
-export const GitLabDiscoveryPlugin: PluginV2.Definition<ProviderV2.Service | ModelV2.Service | AccountV2.Service>
-```
+Not implemented: there is no `AccountPlugin` (`AccountV2` in `packages/core/src/account.ts` is types-only, with no Service or layer) and no `GitLabDiscoveryPlugin` (only `GitLabPlugin` in `packages/core/src/plugin/provider/gitlab.ts`).
 
 ## Plugin Hooks
+
+Planned, not implemented. The `init`, `provider.update`, and `model.update` hooks below do not exist in the current source.
 
 ```ts
 export type Hooks = {
