@@ -14,6 +14,20 @@ truth unless an explicit migration decision documents otherwise.
 
 ---
 
+# 0. Commands & workspace quirks
+
+- **Never run tests from the repo root.** Root `bun test` is disabled by design (root `package.json` test script `exit 1`; root `bunfig.toml` `[test] root = "./do-not-run-tests-from-root"`). Run tests from the affected package.
+- Root `bun typecheck` = `bun turbo typecheck` (all packages). Per-package typecheck is `tsgo --noEmit` (native `@typescript/native-preview`, not `tsc`); `packages/app` uses `tsgo -b`.
+- Workspace dependency versions live in the root `package.json` `workspaces.catalog`; packages reference them as `catalog:`. Bump a version in the catalog, never in a single package.
+- Install has a 3-day cooldown: root `bunfig.toml` sets `[install] exact = true` and `minimumReleaseAge = 259200`. A version published <3 days ago is rejected unless listed in `minimumReleaseAgeExcludes`.
+- Many dependencies are locally patched (`patchedDependencies` → `patches/`). Do not bump a pinned version without reviewing its patch.
+- App dev servers require `--conditions=browser`; the package `dev` scripts already set it.
+- Generated SDK: after a public Protocol/Server HttpApi change run `bun run generate` from `packages/client`. CI gate `bun run check:generated` regenerates, then `git diff --exit-code -- src/generated src/generated-effect`.
+- `packages/opencode` HttpApi gate: `bun run test:httpapi` (coverage + auth + effect modes). Web e2e: `bun --cwd packages/app test:e2e:local` (Playwright).
+- Husky `pre-push` runs `bun knowledge:check` (advisory), asserts the Bun version from `packageManager`, then `bun typecheck`.
+
+---
+
 # 1. Operating Rules
 
 ## Repository Root

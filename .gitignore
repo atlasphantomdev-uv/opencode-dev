@@ -33,3 +33,5 @@ logs/
 *.bun-build
 tsconfig.tsbuildinfo
 /packages/opencode/config.json
+.taskmaster/
+.opencode/knowledge/

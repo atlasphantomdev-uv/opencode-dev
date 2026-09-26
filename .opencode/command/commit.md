@@ -1,6 +1,6 @@
 ---
 description: git commit and push
-model: 9router/kimi/kimi-k2.5
+model: 9router/ds/deepseek-v4-flash
 subtask: true
 ---
 

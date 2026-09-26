@@ -5,6 +5,13 @@
 - **Schema**: Drizzle schema lives in `packages/core/src/**/*.sql.ts`.
 - **Migrations**: database migrations live in `packages/core` and are applied by core.
 
+## Commands
+
+- Tests: `bun test` (the script adds `--timeout 30000 --only-failures`). Single file: `bun test test/<path>.test.ts`; test preloads come from `bunfig.toml`.
+- Typecheck: `bun typecheck` (`tsgo --noEmit`; native `tsgo`, not `tsc`).
+- HttpApi exerciser gate (CI): `bun run test:httpapi` — coverage, auth, and effect modes with `--fail-on-missing --fail-on-skip`.
+- Web e2e lives in `packages/app`: `bun --cwd packages/app test:e2e:local` (Playwright).
+
 ## Development server
 
 - Running `bun dev` from `packages/opencode` starts the live interactive TUI. Do not run it as a blocking foreground command when you need to inspect the result.
