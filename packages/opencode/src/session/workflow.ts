@@ -37,12 +37,21 @@ export type Contract = Schema.Schema.Type<typeof Contract>
 export type Role = "none" | "required" | "verify"
 export type Status = "none" | "pending" | "failed" | "passed"
 
+export const METADATA_KEY = "opencode.workflow"
+
 export interface State {
   status: Status
   failures: number
   implementationAgent?: string
   skills: string[]
 }
+
+const PersistedState = Schema.Struct({
+  status: Schema.Literals(["none", "pending", "failed", "passed"]),
+  failures: Schema.Int,
+  implementationAgent: Schema.optional(Schema.String),
+  skills: Schema.Array(Schema.String),
+})
 
 export const MAX_FAILURES = 3
 
@@ -59,6 +68,19 @@ function state(sessionID: SessionID): State {
 export function get(sessionID: SessionID): State {
   const current = state(sessionID)
   return { ...current, skills: [...current.skills] }
+}
+
+/** Return the state shape stored in session metadata for process restart recovery. */
+export function snapshot(sessionID: SessionID): State {
+  return get(sessionID)
+}
+
+/** Restore a previously persisted state. Invalid or absent metadata is ignored. */
+export function restore(input: { sessionID: SessionID; value: unknown }): void {
+  const decoded = Schema.decodeUnknownOption(PersistedState)(input.value)
+  if (Option.isNone(decoded)) return
+  if (decoded.value.failures < 0) return
+  states.set(input.sessionID, { ...decoded.value, skills: [...decoded.value.skills] })
 }
 
 /** Test/cleanup hook. Clears all tracked workflow obligations. */

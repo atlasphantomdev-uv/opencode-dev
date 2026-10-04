@@ -61,6 +61,18 @@ describe("session.workflow", () => {
     expect(Workflow.get(id).status).toBe("none")
   })
 
+  test("restores persisted state after an in-memory reset", () => {
+    const id = sid()
+    Workflow.commit({ sessionID: id, role: "required", agent: "general", skills: ["effect"] })
+    const saved = Workflow.snapshot(id)
+
+    Workflow.reset()
+    expect(Workflow.get(id).status).toBe("none")
+    Workflow.restore({ sessionID: id, value: saved })
+
+    expect(Workflow.get(id)).toEqual(saved)
+  })
+
   test("counts failures, permits healing, and caps attempts", () => {
     const id = sid()
     Workflow.commit({ sessionID: id, role: "required", agent: "general" })

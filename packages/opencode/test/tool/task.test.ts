@@ -1127,6 +1127,9 @@ describe("tool.task", () => {
       )
       expect(impl.output).toContain('"status":"completed"')
       expect(Workflow.get(chat.id).status).toBe("pending")
+      expect((yield* (yield* Session.Service).get(chat.id)).metadata?.[Workflow.METADATA_KEY]).toEqual(
+        Workflow.snapshot(chat.id),
+      )
 
       const verify = yield* def.execute(
         { description: "verify", prompt: "verify it", subagent_type: "build", verification: "verify" },
@@ -1138,6 +1141,9 @@ describe("tool.task", () => {
       )
       expect(verify.output).toContain('"passed":true')
       expect(Workflow.get(chat.id).status).toBe("passed")
+      expect((yield* (yield* Session.Service).get(chat.id)).metadata?.[Workflow.METADATA_KEY]).toEqual(
+        Workflow.snapshot(chat.id),
+      )
     }),
   )
 

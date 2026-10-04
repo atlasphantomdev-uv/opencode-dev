@@ -114,6 +114,17 @@ export const TaskTool = Tool.define(
       }
 
       const parent = yield* sessions.get(ctx.sessionID)
+      Workflow.restore({ sessionID: ctx.sessionID, value: parent.metadata?.[Workflow.METADATA_KEY] })
+      const persistWorkflow = Effect.fnUntraced(function* () {
+        const currentParent = yield* sessions.get(ctx.sessionID)
+        yield* sessions.setMetadata({
+          sessionID: ctx.sessionID,
+          metadata: {
+            ...(currentParent.metadata ?? {}),
+            [Workflow.METADATA_KEY]: Workflow.snapshot(ctx.sessionID),
+          },
+        })
+      })
       let current = parent
       let depth = 0
       while (current.parentID) {
@@ -228,6 +239,9 @@ export const TaskTool = Tool.define(
         agent: params.subagent_type,
         skills: params.skills,
       })
+      if (verificationRole !== "none" || parent.metadata?.[Workflow.METADATA_KEY] !== undefined) {
+        yield* persistWorkflow()
+      }
 
       const runTask = Effect.fn("TaskTool.runTask")(function* () {
         const resolved = yield* ops.resolvePromptParts(params.prompt)
@@ -265,6 +279,7 @@ export const TaskTool = Tool.define(
           )
         }
         Workflow.record({ sessionID: ctx.sessionID, role: verificationRole, agent: params.subagent_type, contract })
+        yield* persistWorkflow()
         return Workflow.render(contract)
       })
 
