@@ -84,13 +84,18 @@ type State = {
   dirs: Set<string>
 }
 
+type ScannedSkill = {
+  path: string
+  source?: string
+}
+
 type DiscoveryState = {
-  matches: string[]
+  matches: ScannedSkill[]
   dirs: string[]
 }
 
 type ScanState = {
-  matches: Set<string>
+  matches: Map<string, string | undefined>
   dirs: Set<string>
 }
 
@@ -102,7 +107,7 @@ export interface Interface {
   readonly available: (agent?: Agent.Info) => Effect.Effect<Info[]>
 }
 
-const add = Effect.fnUntraced(function* (state: State, match: string, events: EventV2Bridge.Service["Service"]) {
+const parse = Effect.fnUntraced(function* (match: string, events: EventV2Bridge.Service["Service"]) {
   const md = yield* Effect.tryPromise({
     try: () => ConfigMarkdown.parse(match),
     catch: (err) => err,
@@ -118,32 +123,23 @@ const add = Effect.fnUntraced(function* (state: State, match: string, events: Ev
     ),
   )
 
-  if (!md) return
+  if (!md) return undefined
 
-  if (!isSkillFrontmatter(md.data)) return
+  if (!isSkillFrontmatter(md.data)) return undefined
 
-  if (state.skills[md.data.name]) {
-    yield* Effect.logWarning("duplicate skill name", {
-      name: md.data.name,
-      existing: state.skills[md.data.name].location,
-      duplicate: match,
-    })
-  }
-
-  state.dirs.add(path.dirname(match))
-  state.skills[md.data.name] = {
+  return {
     name: md.data.name,
     description: md.data.description,
     location: match,
     content: md.content,
-  }
+  } satisfies Info
 })
 
 const scan = Effect.fnUntraced(function* (
   state: ScanState,
   root: string,
   pattern: string,
-  opts?: { dot?: boolean; scope?: string },
+  opts?: { dot?: boolean; scope?: string; source?: string },
 ) {
   const matches = yield* Effect.tryPromise({
     try: () =>
@@ -165,7 +161,11 @@ const scan = Effect.fnUntraced(function* (
   )
 
   for (const match of matches) {
-    state.matches.add(match)
+    // Identical absolute paths reached by more than one scan (for example a
+    // config directory that is also listed in `skills.paths`) are silently
+    // deduplicated: the Map keeps the first source label and the path is parsed
+    // at most once.
+    if (!state.matches.has(match)) state.matches.set(match, opts?.source)
     state.dirs.add(path.dirname(match))
   }
 })
@@ -180,7 +180,7 @@ const discoverSkills = Effect.fnUntraced(function* (
   directory: string,
   worktree: string,
 ) {
-  const state: ScanState = { matches: new Set(), dirs: new Set() }
+  const state: ScanState = { matches: new Map(), dirs: new Set() }
 
   const externalDirs: string[] = []
   if (!disableExternalSkills) {
@@ -190,7 +190,7 @@ const discoverSkills = Effect.fnUntraced(function* (
     for (const dir of externalDirs) {
       const root = path.join(global.home, dir)
       if (!(yield* fsys.isDir(root))) continue
-      yield* scan(state, root, EXTERNAL_SKILL_PATTERN, { dot: true, scope: "global" })
+      yield* scan(state, root, EXTERNAL_SKILL_PATTERN, { dot: true, scope: "global", source: "external:global" })
     }
 
     const upDirs = yield* fsys
@@ -198,13 +198,13 @@ const discoverSkills = Effect.fnUntraced(function* (
       .pipe(Effect.catch(() => Effect.succeed([] as string[])))
 
     for (const root of upDirs) {
-      yield* scan(state, root, EXTERNAL_SKILL_PATTERN, { dot: true, scope: "project" })
+      yield* scan(state, root, EXTERNAL_SKILL_PATTERN, { dot: true, scope: "project", source: "external:project" })
     }
   }
 
   const configDirs = yield* config.directories()
   for (const dir of configDirs) {
-    yield* scan(state, dir, OPENCODE_SKILL_PATTERN)
+    yield* scan(state, dir, OPENCODE_SKILL_PATTERN, { source: "config" })
   }
 
   const cfg = yield* config.get()
@@ -216,31 +216,58 @@ const discoverSkills = Effect.fnUntraced(function* (
       continue
     }
 
-    yield* scan(state, dir, SKILL_PATTERN)
+    yield* scan(state, dir, SKILL_PATTERN, { source: "config:paths" })
   }
 
   for (const url of cfg.skills?.urls ?? []) {
     const pulledDirs = yield* discovery.pull(url)
     for (const dir of pulledDirs) {
-      yield* scan(state, dir, SKILL_PATTERN)
+      yield* scan(state, dir, SKILL_PATTERN, { source: "remote" })
     }
   }
 
   return {
-    matches: Array.from(state.matches),
+    matches: Array.from(state.matches, ([match, source]) => ({ path: match, source })),
     dirs: Array.from(state.dirs),
   }
 })
 
+// Sources are collected in intentional precedence order (lowest → highest):
+//   built-in base skill (registered before load) < external:global <
+//   external:project < config (global config dir, project `.opencode`, `~/.opencode`,
+//   `OPENCODE_CONFIG_DIR`) < config:paths < remote.
+// Later matches win. Parsing runs concurrently, but the merge below walks
+// `discovered.matches` sequentially in this order, so the winner never depends
+// on async completion order.
 const loadSkills = Effect.fnUntraced(function* (
   state: State,
   discovered: DiscoveryState,
   events: EventV2Bridge.Service["Service"],
 ) {
-  yield* Effect.forEach(discovered.matches, (match) => add(state, match, events), {
-    concurrency: "unbounded",
-    discard: true,
-  })
+  const parsed = yield* Effect.forEach(
+    discovered.matches,
+    (entry) =>
+      parse(entry.path, events).pipe(
+        Effect.map((info) => (info === undefined ? undefined : { info, source: entry.source })),
+      ),
+    { concurrency: "unbounded" },
+  )
+
+  for (const entry of parsed) {
+    if (!entry) continue
+    const { info, source } = entry
+    const existing = state.skills[info.name]
+    if (existing) {
+      yield* Effect.logWarning("duplicate skill name", {
+        name: info.name,
+        winner: info.location,
+        ignored: existing.location,
+        source,
+      })
+    }
+    state.dirs.add(path.dirname(info.location))
+    state.skills[info.name] = info
+  }
 
   yield* Effect.logInfo("init", { count: Object.keys(state.skills).length })
 })
