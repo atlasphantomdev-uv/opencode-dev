@@ -7,6 +7,7 @@ import { Session } from "@/session/session"
 import { SessionID, MessageID } from "../session/schema"
 import { MessageV2 } from "../session/message-v2"
 import { Agent } from "../agent/agent"
+import { Workflow } from "../session/workflow"
 import { deriveSubagentSessionPermission } from "../agent/subagent-permissions"
 import type { SessionPrompt } from "../session/prompt"
 import { Config } from "@/config/config"
@@ -49,6 +50,17 @@ const BaseParameterFields = {
       "This should only be set if you mean to resume a previous task (you can pass a prior task_id and the task will continue the same subagent session as before instead of creating a fresh one)",
   }),
   command: Schema.optional(Schema.String).annotate({ description: "The command that triggered this task" }),
+  verification: Schema.optional(Schema.Literals(["none", "required", "verify"])).annotate({
+    description:
+      'Workflow role. "required" marks this delegation as work that must later be independently verified and returns a structured result contract. "verify" runs the verification step; only a passing contract clears the obligation. Omit for ordinary delegation.',
+  }),
+  result_contract: Schema.optional(Schema.Boolean).annotate({
+    description:
+      "Require the subagent to return the structured JSON result contract. Implied when verification is set.",
+  }),
+  skills: Schema.optional(Schema.Array(Schema.String)).annotate({
+    description: "Skills the caller loaded for this delegation. Recorded on the workflow obligation.",
+  }),
 }
 
 const BaseParameters = Schema.Struct(BaseParameterFields)
@@ -116,6 +128,22 @@ export const TaskTool = Tool.define(
         )
       }
 
+      const next = yield* agent.get(params.subagent_type)
+      if (!next) {
+        return yield* Effect.fail(new Error(`Unknown agent type: ${params.subagent_type} is not a valid agent type`))
+      }
+
+      const verificationRole = params.verification ?? "none"
+      const contractRequired = params.result_contract === true || verificationRole !== "none"
+      const decision = Workflow.check({
+        sessionID: ctx.sessionID,
+        role: verificationRole,
+        agent: params.subagent_type,
+      })
+      if (!decision.ok) {
+        return yield* Effect.fail(new Error(`Workflow rejected task: ${decision.reason}`))
+      }
+
       if (!ctx.extra?.bypassAgentCheck) {
         yield* ctx.ask({
           permission: id,
@@ -126,11 +154,6 @@ export const TaskTool = Tool.define(
             subagent_type: params.subagent_type,
           },
         })
-      }
-
-      const next = yield* agent.get(params.subagent_type)
-      if (!next) {
-        return yield* Effect.fail(new Error(`Unknown agent type: ${params.subagent_type} is not a valid agent type`))
       }
 
       const session = params.task_id
@@ -197,8 +220,18 @@ export const TaskTool = Tool.define(
       const ops = ctx.extra?.promptOps as TaskPromptOps
       if (!ops) return yield* Effect.fail(new Error("TaskTool requires promptOps in ctx.extra"))
 
+      // Commit the workflow transition only once the delegation is actually starting, so a
+      // denied permission ask or failed session create cannot leave a dangling obligation.
+      Workflow.commit({
+        sessionID: ctx.sessionID,
+        role: verificationRole,
+        agent: params.subagent_type,
+        skills: params.skills,
+      })
+
       const runTask = Effect.fn("TaskTool.runTask")(function* () {
-        const parts = yield* ops.resolvePromptParts(params.prompt)
+        const resolved = yield* ops.resolvePromptParts(params.prompt)
+        const parts = contractRequired ? [...resolved, { type: "text" as const, text: Workflow.INSTRUCTION }] : resolved
         const result = yield* ops.prompt({
           messageID: MessageID.ascending(),
           sessionID: nextSession.id,
@@ -221,7 +254,18 @@ export const TaskTool = Tool.define(
         if (failed?.type === "tool" && failed.state.status === "error") {
           return yield* Effect.fail(new Error(`Subagent failed (task_id: ${nextSession.id}): ${failed.state.error}`))
         }
-        return result.parts.findLast((item) => item.type === "text")?.text ?? ""
+        const text = result.parts.findLast((item) => item.type === "text")?.text ?? ""
+        if (!contractRequired) return text
+        const contract = Workflow.parse(text)
+        if (!contract) {
+          return yield* Effect.fail(
+            new Error(
+              `Subagent returned no valid result contract (task_id: ${nextSession.id}). Expected a fenced json block with status and summary.`,
+            ),
+          )
+        }
+        Workflow.record({ sessionID: ctx.sessionID, role: verificationRole, agent: params.subagent_type, contract })
+        return Workflow.render(contract)
       })
 
       const inject = Effect.fn("TaskTool.injectBackgroundResult")(function* (

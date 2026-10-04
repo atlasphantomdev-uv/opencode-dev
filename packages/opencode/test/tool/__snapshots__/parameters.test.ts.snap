@@ -317,12 +317,32 @@ exports[`tool parameters JSON Schema (wire shape) task 1`] = `
       "description": "The task for the agent to perform",
       "type": "string",
     },
+    "result_contract": {
+      "description": "Require the subagent to return the structured JSON result contract. Implied when verification is set.",
+      "type": "boolean",
+    },
+    "skills": {
+      "description": "Skills the caller loaded for this delegation. Recorded on the workflow obligation.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
     "subagent_type": {
       "description": "The type of specialized agent to use for this task",
       "type": "string",
     },
     "task_id": {
       "description": "This should only be set if you mean to resume a previous task (you can pass a prior task_id and the task will continue the same subagent session as before instead of creating a fresh one)",
+      "type": "string",
+    },
+    "verification": {
+      "description": "Workflow role. "required" marks this delegation as work that must later be independently verified and returns a structured result contract. "verify" runs the verification step; only a passing contract clears the obligation. Omit for ordinary delegation.",
+      "enum": [
+        "none",
+        "required",
+        "verify",
+      ],
       "type": "string",
     },
   },

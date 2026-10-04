@@ -17,6 +17,7 @@ import { SessionRunState } from "@/session/run-state"
 import { SessionStatus } from "@/session/status"
 
 import { TaskTool, type TaskPromptOps } from "../../src/tool/task"
+import { Workflow } from "../../src/session/workflow"
 import { Truncate } from "@/tool/truncate"
 import { ToolRegistry } from "@/tool/registry"
 import { RuntimeFlags } from "@/effect/runtime-flags"
@@ -26,6 +27,7 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 
 afterEach(async () => {
+  Workflow.reset()
   await disposeAllInstances()
 })
 
@@ -1096,6 +1098,105 @@ describe("tool.task", () => {
 
       expect((yield* jobs.get(child.id))?.status).toBe("cancelled")
       expect((yield* jobs.get(grandchild.id))?.status).toBe("cancelled")
+    }),
+  )
+
+  it.instance("requires a structured contract and clears it after verification passes", () =>
+    Effect.gen(function* () {
+      const { chat, assistant } = yield* seed()
+      const tool = yield* TaskTool
+      const def = yield* tool.init()
+      const context = (promptOps: TaskPromptOps) => ({
+        sessionID: chat.id,
+        messageID: assistant.id,
+        agent: "build",
+        abort: new AbortController().signal,
+        extra: { promptOps },
+        messages: [] as SessionV1.WithParts[],
+        metadata: () => Effect.void,
+        ask: () => Effect.void,
+      })
+
+      const impl = yield* def.execute(
+        { description: "impl", prompt: "do work", subagent_type: "general", verification: "required" },
+        context(
+          stubOps({
+            text: '```json\n{"status":"completed","summary":"did it","evidence":[{"file":"a.ts","line":3,"claim":"admitted"}]}\n```',
+          }),
+        ),
+      )
+      expect(impl.output).toContain('"status":"completed"')
+      expect(Workflow.get(chat.id).status).toBe("pending")
+
+      const verify = yield* def.execute(
+        { description: "verify", prompt: "verify it", subagent_type: "build", verification: "verify" },
+        context(
+          stubOps({
+            text: '```json\n{"status":"completed","summary":"ok","verification":{"required":true,"passed":true,"command":"bun test"}}\n```',
+          }),
+        ),
+      )
+      expect(verify.output).toContain('"passed":true')
+      expect(Workflow.get(chat.id).status).toBe("passed")
+    }),
+  )
+
+  it.instance("rejects a required-contract result that is not structured", () =>
+    Effect.gen(function* () {
+      const { chat, assistant } = yield* seed()
+      const tool = yield* TaskTool
+      const def = yield* tool.init()
+
+      const exit = yield* def
+        .execute(
+          { description: "impl", prompt: "do work", subagent_type: "general", verification: "required" },
+          {
+            sessionID: chat.id,
+            messageID: assistant.id,
+            agent: "build",
+            abort: new AbortController().signal,
+            extra: { promptOps: stubOps({ text: "done" }) },
+            messages: [],
+            metadata: () => Effect.void,
+            ask: () => Effect.void,
+          },
+        )
+        .pipe(Effect.exit)
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) throw new Error("expected contract failure")
+      expect(String(Cause.squash(exit.cause))).toContain("no valid result contract")
+    }),
+  )
+
+  it.instance("blocks ordinary delegation while verification is pending", () =>
+    Effect.gen(function* () {
+      const { chat, assistant } = yield* seed()
+      const tool = yield* TaskTool
+      const def = yield* tool.init()
+      const context = (promptOps: TaskPromptOps) => ({
+        sessionID: chat.id,
+        messageID: assistant.id,
+        agent: "build",
+        abort: new AbortController().signal,
+        extra: { promptOps },
+        messages: [] as SessionV1.WithParts[],
+        metadata: () => Effect.void,
+        ask: () => Effect.void,
+      })
+
+      yield* def.execute(
+        { description: "impl", prompt: "do work", subagent_type: "general", verification: "required" },
+        context(stubOps({ text: '```json\n{"status":"completed","summary":"did it"}\n```' })),
+      )
+
+      const exit = yield* def
+        .execute({ description: "more", prompt: "keep going", subagent_type: "general" }, context(stubOps()))
+        .pipe(Effect.exit)
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) throw new Error("expected workflow rejection")
+      expect(String(Cause.squash(exit.cause))).toContain("verification is pending")
     }),
   )
 })

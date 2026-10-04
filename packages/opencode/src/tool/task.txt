@@ -17,3 +17,10 @@ Usage notes:
 5. The agent's outputs should generally be trusted
 6. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent. Tell it how to verify its work if possible (e.g., relevant test commands).
 7. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
+
+Verification workflow:
+- You decide whether a task needs independent verification. To declare it, pass `verification: "required"` on the implementation delegation. That delegation must return a structured JSON result contract, and the runtime records an outstanding obligation for the session.
+- While the obligation is outstanding, further delegation is rejected. Run a verification delegation with `verification: "verify"`; only a contract with `verification.passed: true` clears the obligation. A failed verification is tracked, and after 3 failures the runtime refuses further attempts so you must escalate.
+- Use `verification: "none"` (or omit) for ordinary delegation; it is rejected only while an obligation is outstanding.
+- Pass `result_contract: true` to require the structured contract without a verification obligation. Pass `skills: ["..."]` to record which skills were loaded for the delegation.
+- The contract is a fenced ```json block: {"status":"completed|failed|blocked","summary":"...","evidence":[{"file":"...","line":1,"claim":"..."}],"verification":{"required":true,"passed":true,"command":"..."}}. `status` and `summary` are required.
