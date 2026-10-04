@@ -500,6 +500,32 @@ noLLMServer.instance(
   { config: cfg },
 )
 
+noLLMServer.instance(
+  "prompt retry returns the existing assistant for an explicit message ID",
+  () =>
+    Effect.gen(function* () {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "Pinned" })
+      const seeded = yield* seed(chat.id, { finish: "stop" })
+
+      const result = yield* prompt.prompt({
+        sessionID: chat.id,
+        messageID: seeded.user.id,
+        agent: "build",
+        model: ref,
+        parts: [{ type: "text", text: "retry" }],
+      })
+
+      expect(result.info.id).toBe(seeded.assistant.id)
+      expect((yield* sessions.messages({ sessionID: chat.id })).map((message) => message.info.id)).toEqual([
+        seeded.user.id,
+        seeded.assistant.id,
+      ])
+    }),
+  { config: cfg },
+)
+
 it.instance("loop exits without an LLM request for interrupted orphan tool calls", () =>
   Effect.gen(function* () {
     const { llm } = yield* useServerConfig(providerCfg)

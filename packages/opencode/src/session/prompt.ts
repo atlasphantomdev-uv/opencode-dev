@@ -1053,6 +1053,27 @@ const layer = Layer.effect(
       "SessionPrompt.prompt",
     )(function* (input: PromptInput) {
       const session = yield* sessions.get(input.sessionID).pipe(Effect.orDie)
+
+      // Explicit message IDs are the public idempotency key used by the Hermes
+      // integration.  The message projector is durable, so a retry after a
+      // lost HTTP response must return the existing message rather than start
+      // a second model/tool loop.  Calls without an explicit ID retain the
+      // normal interactive behavior.
+      if (input.messageID) {
+        const existing = yield* sessions
+          .findMessage(input.sessionID, (message) => message.info.id === input.messageID)
+          .pipe(Effect.orDie)
+        if (Option.isSome(existing)) {
+          if (existing.value.info.role === "assistant") return existing.value
+          const assistant = yield* sessions
+            .findMessage(
+              input.sessionID,
+              (message) => message.info.role === "assistant" && message.info.parentID === existing.value.info.id,
+            )
+            .pipe(Effect.orDie)
+          return Option.isSome(assistant) ? assistant.value : existing.value
+        }
+      }
       yield* revert.cleanup(session)
       const message = yield* createUserMessage(input)
       yield* sessions.touch(input.sessionID)
